@@ -1,0 +1,300 @@
+
+<script>
+  const menuLinks = [
+    {% for link in section.settings.menu.links %}
+      {
+        link: {{ link | json }}}
+        title: {{ link.title | json }},
+        url: {{ link.url | json }},
+        type: {{ link.type | json }}
+      }{% unless forloop.last %},{% endunless %}
+    {% endfor %}
+  ];
+</script>
+
+<div class="header-mobile__menu color-background-4">
+  {% if section.blocks.size != 0 %}
+    <ul class="header-mobile__menu-header list-unstyled no-js-hidden">
+      <li class="active">
+        <a href="#menu-main" class="full-unstyled-link h6">
+          {{- section.settings.heading -}}
+        </a>
+      </li>
+      {% for block in section.blocks %}
+        {% if block.settings.collection_list != blank or block.settings.blog != blank %}
+          <li>
+            <a href="#menu-{{ block.id }}" class="full-unstyled-link h6">
+              {{- block.settings.menu_heading -}}
+            </a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <div class="header-mobile__menus list-unstyled">
+    <div role="tablist" aria-label="Main Menu" class="header-mobile__menu-main">
+      {%- assign is_first_tab_selected = false -%}
+      <!-- Track if first tab is selected -->
+      {%- for link in section.settings.menu.links -%}
+        {%- if link.active and is_first_tab_selected == false -%}
+          {%- assign is_first_tab_selected = true -%}
+          <!-- Tab is already selected -->
+        {%- endif -%}
+        <button
+          role="tab"
+          id="tab-{{ forloop.index }}"
+          aria-selected="{% if link.active %}true{% elsif forloop.first and is_first_tab_selected == false %}true{% else %}false{% endif %}"
+          aria-controls="panel-{{ forloop.index }}"
+          class="
+            header-mobile__menu-tab
+            {% if link.active %}
+              current-link
+            {% elsif forloop.first and is_first_tab_selected == false %}
+              current-link
+            {% endif %}
+            {% if link.links != blank %}
+              have-submenu
+            {% endif %}
+          "
+        >
+          {{- link.title | escape }}
+        </button>
+      {%- endfor -%}
+    </div>
+    {%- for link in section.settings.menu.links -%}
+      <div
+        class="header-mobile__menu-panels"
+        role="tabpanel"
+        aria-labelledby="tab-{{ forloop.index }}"
+        id="panel-{{ forloop.index }}"
+        {% if forloop.first or link.active %}
+        {% else %}
+          hidden
+        {% endif %}
+      >
+        <nav aria-labelledby="tab-{{ forloop.index }}">
+          <ul
+            class="header-mobile__tabpanel list-unstyled"
+          >
+            {% if link.links != blank %}
+              {%- for childlink in link.links -%}
+                {%- assign image_filename = childlink.url
+                  | remove: '/collections/'
+                  | remove: '/pages/'
+                  | append: '-pic'
+                  | append: '.png'
+                -%}
+                <li class="{% if childlink.current %}current-link{% endif %}">
+                  <div class="header-mobile__childlink">
+                    <img
+                      src="{{ image_filename | file_url }}"
+                      alt="{{childlink.url}}"
+                      class="header-mobile_sub-menu-img"
+                      width="auto"
+                      height="auto"
+                      loading="lazy"
+                    >
+                    <a href="{{ childlink.url }}" class="header-mobile__text-link">
+                      {{- childlink.title | escape -}}
+                    </a>
+                  </div>
+                </li>
+              {%- endfor -%}
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    {%- endfor -%}
+    <div class="header-mobile__brand">
+      <h6 class="header-mobile__brand-heading heading7">FEATURED BRANDS</h6>
+      <div class="header-mobile__brand"></div>
+    </div>
+  </div>
+</div>
+<script src="{{ 'header-mobile.js' | asset_url }}" defer="defer"></script>
+
+{% schema %}
+{
+	"name": "t:sections.header_mobile.name",
+	"class": "header-mobile-section",
+	"max_blocks": 2,
+	"settings": [
+		{
+			"type": "range",
+			"id": "height",
+			"min": 65,
+			"max": 120,
+			"step": 5,
+			"default": 75,
+			"label": "t:sections.header.settings.height.label",
+			"info": "t:sections.header.settings.height.info"
+		},
+		{
+			"type": "image_picker",
+			"id": "logo",
+			"label": "t:sections.header.settings.logo.label"
+		},
+		{
+			"type": "image_picker",
+			"id": "logo_2",
+			"label": "t:sections.header.settings.logo_2.label",
+			"info": "t:sections.header.settings.logo_2.info"
+		},
+		{
+			"type": "range",
+			"id": "logo_width",
+			"min": 50,
+			"max": 160,
+			"step": 5,
+			"default": 60,
+			"unit": "t:sections.header.settings.logo_width.unit",
+			"label": "t:sections.header.settings.logo_width.label"
+		},
+		{
+			"type": "select",
+			"id": "logo_position",
+			"default": "center",
+			"label": "t:sections.header.settings.logo_position.label",
+			"options": [
+				{
+					"value": "center",
+					"label": "t:sections.header.settings.logo_position.options__1.label"
+				},
+				{
+					"value": "left",
+					"label": "t:sections.header.settings.logo_position.options__2.label"
+				}
+			]
+		},
+		{
+			"type": "link_list",
+			"id": "menu",
+			"default": "main-menu",
+			"label": "t:sections.header.settings.menu.label"
+		},
+		{
+			"type": "text",
+			"id": "heading",
+			"label": "t:sections.header_mobile.settings.heading.label",
+			"info": "t:sections.header_mobile.settings.heading.info",
+			"default": "Main"
+		},
+		{
+			"type": "select",
+			"id": "sticky_header_type",
+			"default": "on-scroll-up",
+			"label": "t:sections.header.settings.sticky_header_type.label",
+			"options": [
+				{
+					"value": "none",
+					"label": "t:sections.header.settings.sticky_header_type.options__1.label"
+				},
+				{
+					"value": "on-scroll-up",
+					"label": "t:sections.header.settings.sticky_header_type.options__2.label"
+				},
+				{
+					"value": "always",
+					"label": "t:sections.header.settings.sticky_header_type.options__3.label"
+				}
+			]
+		},
+		{
+			"type": "header",
+			"content": "t:sections.header.settings.header.content"
+		},
+		{
+			"type": "checkbox",
+			"id": "enable_search",
+			"default": true,
+			"label": "t:sections.header.settings.enable_search.label",
+			"info": "t:sections.header.settings.enable_search.info"
+		}
+	],
+	"blocks": [
+		{
+			"type": "collection-menu",
+			"name": "t:sections.header_mobile.blocks.collection_menu.name",
+			"settings": [
+				{
+					"type": "text",
+					"id": "menu_heading",
+					"label": "t:sections.header_mobile.blocks.all.heading.label",
+					"default": "Collection"
+				},
+				{
+					"type": "collection_list",
+					"id": "collection_list",
+					"label": "t:sections.all.collection.label"
+				},
+				{
+					"type": "select",
+					"id": "image_ratio",
+					"options": [
+						{
+							"value": "landscape",
+							"label": "t:sections.all.image.ratio.options__1.label"
+						},
+						{
+							"value": "portrait",
+							"label": "t:sections.all.image.ratio.options__2.label"
+						},
+						{
+							"value": "square",
+							"label": "t:sections.all.image.ratio.options__3.label"
+						}
+					],
+					"default": "square",
+					"label": "t:sections.all.image.ratio.label"
+				}
+			]
+		},
+		{
+			"type": "article-menu",
+			"name": "t:sections.header_mobile.blocks.article_menu.name",
+			"settings": [
+				{
+					"type": "text",
+					"id": "menu_heading",
+					"label": "t:sections.header_mobile.blocks.all.heading.label",
+					"default": "Articles"
+				},
+				{
+					"type": "blog",
+					"id": "blog",
+					"label": "t:sections.header_mobile.blocks.article_menu.blog.label"
+				},
+				{
+					"type": "range",
+					"id": "article_count",
+					"label": "t:sections.header_mobile.blocks.article_menu.article_count.label",
+					"min": 1,
+					"max": 5,
+					"default": 3
+				},
+				{
+					"type": "select",
+					"id": "image_ratio",
+					"options": [
+						{
+							"value": "landscape",
+							"label": "t:sections.all.image.ratio.options__1.label"
+						},
+						{
+							"value": "portrait",
+							"label": "t:sections.all.image.ratio.options__2.label"
+						},
+						{
+							"value": "square",
+							"label": "t:sections.all.image.ratio.options__3.label"
+						}
+					],
+					"default": "square",
+					"label": "t:sections.all.image.ratio.label"
+				}
+			]
+		}
+	],
+	"default": {}
+}
+{% endschema %}

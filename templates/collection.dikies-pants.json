@@ -1,0 +1,154 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "banner": {
+      "type": "main-collection-banner",
+      "settings": {
+        "color_scheme": "color-background-1",
+        "overlay_enable": true,
+        "section_layout": "full",
+        "add_word": "Shop",
+        "show_word": true,
+        "show_collection_description": false,
+        "image_size": "small",
+        "show_collection_image": false,
+        "ticker_enable": false,
+        "color_scheme_ticker": "light",
+        "ticker_position": "bottom",
+        "ticker_text": "",
+        "ticker_speed": 5,
+        "ticker_font": 14,
+        "ticker_padding_top": 15,
+        "ticker_padding_bottom": 15,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "product-grid": {
+      "type": "main-collection-product-grid",
+      "custom_css": [],
+      "settings": {
+        "products_per_page": 12,
+        "per_row": 4,
+        "taypes_position": "in_header",
+        "show_secondary_image": true,
+        "show_vendor": true,
+        "show_desc": false,
+        "image_ratio": "portrait",
+        "image_fit": "cover",
+        "enable_filtering": true,
+        "enable_sorting": true,
+        "margin_top": 0,
+        "margin_bottom": 0
+      }
+    },
+    "e1e6bf45-961f-4e1b-820a-28bde1f84f54": {
+      "type": "rich-text",
+      "blocks": {
+        "template--16795619000562__e1e6bf45-961f-4e1b-820a-28bde1f84f54-heading-1": {
+          "type": "heading",
+          "settings": {
+            "heading": "Sunglasses for those who were never meant to blend in.",
+            "heading_size": "medium"
+          }
+        },
+        "template--16795619000562__e1e6bf45-961f-4e1b-820a-28bde1f84f54-text-1": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Welcome to the real deal — <em>Locs Originals</em></p><p>Get the <strong>authentic Locs attitude</strong>, straight from the streets to your face. Made tough. Worn proud. Built for bold moves and louder statements.</p><h3>Why choose Locs from Rewahard?</h3><ul><li>Styles that go hard and never back down</li><li>Fast NZ shipping — get your shades, no waiting games</li><li>Local support — we are right here if you need us</li></ul><p>You came for the edge. You found it. Now pick your pair and wear it like you mean it.</p><p><strong>Locs Originals — for the ones who own their look.</strong></p>"
+          }
+        }
+      },
+      "block_order": [
+        "template--16795619000562__e1e6bf45-961f-4e1b-820a-28bde1f84f54-heading-1",
+        "template--16795619000562__e1e6bf45-961f-4e1b-820a-28bde1f84f54-text-1"
+      ],
+      "disabled": true,
+      "custom_css": [
+        "@media screen and (max-width: 749px) {.rich-text__subheading.subtitle {font-size: 12px; } .rich-text__text {font-size: 14px; }}"
+      ],
+      "settings": {
+        "color_scheme": "background-1",
+        "full_width": true,
+        "padding_top": 20,
+        "padding_bottom": 70,
+        "margin_top": 90,
+        "margin_bottom": 20
+      }
+    },
+    "instagram-collage": {
+      "type": "instagram-collage",
+      "blocks": {
+        "5ff324a1-1735-49eb-97cc-9d19fe27caca": {
+          "type": "instagram-collage_image",
+          "settings": {
+            "image": "shopify://shop_images/Screen_Shot_2023-09-28_at_9.25_1.png"
+          }
+        },
+        "c34e3144-0ce2-406b-8fae-c819c6ad4324": {
+          "type": "instagram-collage_image",
+          "settings": {
+            "image": "shopify://shop_images/Screen_Shot_2023-09-28_at_9.26_1.png"
+          }
+        },
+        "9e5c672a-d590-400f-8247-5362df8fe189": {
+          "type": "instagram-collage_image",
+          "settings": {
+            "image": "shopify://shop_images/Screen_Shot_2023-09-28_at_9.28_1.png"
+          }
+        },
+        "60abfd60-eee5-4917-abb6-55d31a492b6f": {
+          "type": "instagram-collage_image",
+          "settings": {
+            "image": "shopify://shop_images/Screen_Shot_2023-09-28_at_9.28_2.png"
+          }
+        }
+      },
+      "block_order": [
+        "5ff324a1-1735-49eb-97cc-9d19fe27caca",
+        "c34e3144-0ce2-406b-8fae-c819c6ad4324",
+        "9e5c672a-d590-400f-8247-5362df8fe189",
+        "60abfd60-eee5-4917-abb6-55d31a492b6f"
+      ],
+      "custom_css": [
+        "path {color: #000;}"
+      ],
+      "settings": {
+        "subheading": "STAY CONNECTED",
+        "heading": "GET INSPIRED WITH @REWAHARDapparel",
+        "button_label": "CHECK OUT THE ‘GRAM @REWAHARDAPPAREL",
+        "icon_social": "instagram",
+        "button_link": "https://www.instagram.com/rewahardapparel/?hl=en",
+        "column_per_row": 4,
+        "padding_top": 20,
+        "padding_bottom": 10,
+        "margin_top": 0,
+        "margin_bottom": 40,
+        "enable_border_top": false,
+        "enable_border_bottom": false
+      }
+    },
+    "169766866043a38f90": {
+      "type": "apps",
+      "settings": {
+        "include_margins": true,
+        "delay_video_loading": false
+      }
+    }
+  },
+  "order": [
+    "banner",
+    "product-grid",
+    "e1e6bf45-961f-4e1b-820a-28bde1f84f54",
+    "instagram-collage",
+    "169766866043a38f90"
+  ]
+}

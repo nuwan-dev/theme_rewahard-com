@@ -1,0 +1,214 @@
+/* 原有的滚动样式保持不变 */
+.pk-popular-products__wrapper {
+    display: flex !important;
+    flex-wrap: nowrap  !important;
+    overflow-x: auto  !important;
+    overflow-y: hidden  !important;
+    scroll-behavior: smooth  !important;
+    -webkit-overflow-scrolling: touch  !important;
+    scroll-snap-type: x mandatory  !important;
+    gap: 20px  !important;
+    padding: 20px 0  !important;
+    margin: 0 -20px  !important;
+    padding: 0 20px  !important;
+    scrollbar-width: none  !important;
+    -ms-overflow-style: none  !important;
+  }
+
+  .pk-popular-products__wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+
+.pk-popular-products__wrapper .collection-product-card {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  max-width: 80vw;
+  
+  /* 默认移动端样式 */
+  width: 140px !important;
+}
+
+/* 平板设备 */
+@media screen and (min-width: 768px) {
+  .pk-popular-products__wrapper .collection-product-card {
+    width: 280px  !important;
+  }
+}
+
+/* 桌面设备 */
+@media screen and (min-width: 1024px) {
+  .pk-popular-products__wrapper .collection-product-card {
+    width: 300px  !important;
+  }
+}
+
+/* 大屏设备 */
+@media screen and (min-width: 1440px) {
+  .pk-popular-products__wrapper .collection-product-card {
+    width: 300px  !important;
+  }
+}
+
+@media screen and (min-width: 1840px) {
+  .pk-popular-products__wrapper .collection-product-card {
+    width: 350px  !important;
+  }
+}
+
+
+
+  /* 导航按钮样式 */
+  .scroll-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #e5e5e5;
+    cursor: pointer;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+  }
+
+  .scroll-button:hover {
+    background: #f5f5f5;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .scroll-button svg {
+    width: 25px;
+    height: 20px;
+    stroke: #333;
+  }
+
+  .scroll-left {
+    right: 140px;
+    top: -65px;
+
+  }
+
+  .scroll-right {
+    right: 90px;
+    top: -65px;
+  }
+
+  /* 当滚动到边缘时隐藏对应按钮 */
+  .scroll-button.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* 确保容器可以显示按钮 */
+  .pk-container {
+    position: relative;
+    padding-left: 50px;
+    padding-right: 50px;
+  }
+
+  .level {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    flex-direction: column;
+    height:50px !important;
+  }
+
+  /* 适配移动端 */
+  @media (max-width: 768px) {
+    /* .scroll-button {
+      display: none;
+    } */
+
+    .scroll-left {
+    right: 100px;
+    top: -44px;
+
+  }
+
+  .scroll-right {
+    right: 50px;
+    top: -44px;
+  }
+
+    .scroll-button svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .pk-container {
+      padding-left: 40px;
+      padding-right: 40px;
+    }
+    .section-header__line .section-header__title__block {
+        flex-direction: row !important;
+    }
+
+  }
+
+  .level.is-mobile, .level.is-mobile .level-left, .level.is-mobile .level-right {
+    display:flex;
+    height:30px;
+    margin-bottom:20px;
+  }
+  .level.is-mobile .level-item:not(.is-narrow) {
+    flex-grow: 1;
+  }
+  .level.is-mobile .level-item:not(:last-child) {
+    margin-bottom:0;
+    margin-right: .75rem;
+  }
+  .level-item {
+    align-items: center;
+    display: flex;
+    flex-basis: auto;
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: center;
+  }
+.level-item hr {
+  color:#000;
+  height:2px;
+}
+
+/* 添加新的按钮组容器样式 */
+.scroll-buttons-wrapper {
+  position: absolute;
+  right: 80px;
+  top: -96px;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background-color: #fff; /* 设置背景色 */
+  width:120px;
+}
+
+/* 修改现有的按钮样式 */
+.scroll-button {
+  position: static; /* 改变定位方式 */
+  transform: none; /* 移除 transform */
+  width: 40px;
+  height: 40px;
+  /* 其他样式保持不变 */
+}
+
+/* 移除原有的独立定位 */
+.scroll-left, .scroll-right {
+  top: auto;
+  right: auto;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .scroll-buttons-wrapper {
+    right: -12px;
+    top: -77px;
+  }
+  
+}

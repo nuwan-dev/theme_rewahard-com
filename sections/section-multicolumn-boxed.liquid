@@ -1,0 +1,381 @@
+{{ 'section-multicolumn.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'multicolumn.js' | asset_url }}" defer="defer"></script>
+
+{%- style -%}
+    {% render 'spaced-section' %}
+    {% render 'spaced-section-inner' %}
+
+    /* --- 1. LAYOUT CONTAINER --- */
+    #shopify-section-{{ section.id }} .multicolumn-list__wrapper {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: {{ section.settings.grid_gap_mobile }}px;
+        justify-content: center;
+        margin: 0 !important;
+        padding: 0 !important;
+        
+        /* EQUAL HEIGHT FIX: This forces the columns (li items) to stretch to the tallest height */
+        align-items: {% if section.settings.enable_equal_height %}stretch{% else %}flex-start{% endif %} !important;
+    }
+
+    /* --- 2. THE COLUMN (Wrapper) --- */
+    #shopify-section-{{ section.id }} .multicolumn-list__item {
+        display: flex !important;
+        flex-direction: column !important;
+        /* FIX: Ensure the item itself grows to fill the row height */
+        flex-grow: 1; 
+        height: auto !important; 
+    }
+
+    /* --- 3. CARD BOX STYLING --- */
+    #shopify-section-{{ section.id }} .multicolumn-card {
+        background-color: {{ section.settings.card_bg_color }};
+        border: {{ section.settings.card_border_width }}px solid {{ section.settings.card_border_color }} !important;
+        border-radius: {{ section.settings.card_border_radius }}px;
+        padding: {{ section.settings.card_padding }}px;
+        
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        
+        /* CONTROLLER: Content Alignment */
+        text-align: {{ section.settings.content_alignment }};
+        align-items: {% if section.settings.content_alignment == 'left' %}flex-start{% elsif section.settings.content_alignment == 'right' %}flex-end{% else %}center{% endif %};
+        
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+        /* EQUAL HEIGHT FIX: Make the card fill the wrapper height */
+        {% if section.settings.enable_equal_height %}
+            height: 100% !important;
+            justify-content: flex-start; /* Keeps content at top, but box is full height */
+        {% else %}
+            height: auto !important;
+        {% endif %}
+    }
+
+    /* CONTROLLER: Hover Effect */
+    {% if section.settings.enable_hover_effect %}
+        #shopify-section-{{ section.id }} .multicolumn-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+    {% endif %}
+
+    /* --- 4. ICON/IMAGE --- */
+    #shopify-section-{{ section.id }} .multicolumn-card__image-wrapper {
+        margin-bottom: 20px;
+        width: {{ section.settings.icon_width }}px;
+        height: auto;
+        flex-shrink: 0; 
+    }
+    
+    #shopify-section-{{ section.id }} .multicolumn-card__image-wrapper img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        display: block;
+    }
+
+    /* --- 5. TYPOGRAPHY --- */
+    #shopify-section-{{ section.id }} .multicolumn-card__info-title {
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 15px;
+        margin-top: 0;
+        color: {{ section.settings.text_color }};
+        font-size: {{ section.settings.heading_font_size }}px;
+    }
+
+    #shopify-section-{{ section.id }} .multicolumn-card__info-text {
+        line-height: 1.6;
+        color: {{ section.settings.text_color }};
+        
+        /* If equal height is on, this pushes the button (if any) to the bottom, or just fills space */
+        flex-grow: 1; 
+        
+        font-size: {{ section.settings.text_font_size }}px;
+    }
+
+    /* --- 6. RESPONSIVE GRID --- */
+    @media screen and (min-width: 750px) {
+        #shopify-section-{{ section.id }} .multicolumn-list__wrapper {
+            gap: {{ section.settings.grid_gap }}px;
+        }
+        
+        #shopify-section-{{ section.id }} .multicolumn-list__item {
+            /* 3 Columns Calculation */
+            flex: 0 0 calc((100% - ({{ section.settings.grid_gap }}px * 2)) / 3);
+            max-width: calc((100% - ({{ section.settings.grid_gap }}px * 2)) / 3);
+        }
+    }
+
+    @media screen and (max-width: 749px) {
+        #shopify-section-{{ section.id }} .multicolumn-list__item {
+            flex: 0 0 100%;
+            width: 100%;
+        }
+    }
+{%- endstyle -%}
+
+<div class="multicolumn section-{{ section.id }}-padding">
+    <div class="container">
+        <div class="multicolumn-list__wrapper">
+            {%- for block in section.blocks -%}
+                <div class="multicolumn-list__item" {{ block.shopify_attributes }}>
+                    <div class="multicolumn-card">
+                        
+                        {%- if block.settings.image != blank -%}
+                            <div class="multicolumn-card__image-wrapper">
+                                {{
+                                    block.settings.image
+                                    | image_url: width: 300
+                                    | image_tag: loading: 'lazy', width: block.settings.image.width, height: block.settings.image.height
+                                }}
+                            </div>
+                        {%- endif -%}
+
+                        <div class="multicolumn-card__info">
+                            {%- if block.settings.heading != blank -%}
+                                <h3 class="multicolumn-card__info-title">
+                                    {{ block.settings.heading | escape }}
+                                </h3>
+                            {%- endif -%}
+                            {%- if block.settings.text != blank -%}
+                                <div class="multicolumn-card__info-text">
+                                    {{ block.settings.text }}
+                                </div>
+                            {%- endif -%}
+                        </div>
+
+                    </div>
+                </div>
+            {%- endfor -%}
+        </div>
+    </div>
+</div>
+
+{% schema %}
+{
+    "name": "Features Grid (Rewahard)",
+    "tag": "section",
+    "class": "section",
+    "disabled_on": {
+        "groups": ["header", "footer"]
+    },
+    "settings": [
+        {
+            "type": "header",
+            "content": "Layout Controls"
+        },
+        {
+            "type": "checkbox",
+            "id": "enable_equal_height",
+            "label": "Enable Equal Height Rows",
+            "default": true,
+            "info": "Forces all boxes in the same row to match the height of the tallest box."
+        },
+        {
+            "type": "select",
+            "id": "content_alignment",
+            "label": "Content Alignment",
+            "options": [
+                { "value": "left", "label": "Left" },
+                { "value": "center", "label": "Center" },
+                { "value": "right", "label": "Right" }
+            ],
+            "default": "center"
+        },
+        {
+            "type": "range",
+            "id": "grid_gap",
+            "min": 0,
+            "max": 100,
+            "step": 5,
+            "default": 30,
+            "unit": "px",
+            "label": "Gap (Desktop)"
+        },
+        {
+            "type": "range",
+            "id": "grid_gap_mobile",
+            "min": 0,
+            "max": 50,
+            "step": 5,
+            "default": 20,
+            "unit": "px",
+            "label": "Gap (Mobile)"
+        },
+        {
+            "type": "header",
+            "content": "Box Styling"
+        },
+        {
+            "type": "color",
+            "id": "card_bg_color",
+            "label": "Card Background",
+            "default": "#ffffff"
+        },
+        {
+            "type": "color",
+            "id": "card_border_color",
+            "label": "Border Color",
+            "default": "#000000"
+        },
+        {
+            "type": "range",
+            "id": "card_border_width",
+            "min": 0,
+            "max": 5,
+            "step": 1,
+            "default": 1,
+            "unit": "px",
+            "label": "Border Width"
+        },
+        {
+            "type": "range",
+            "id": "card_border_radius",
+            "min": 0,
+            "max": 40,
+            "step": 2,
+            "default": 0,
+            "unit": "px",
+            "label": "Border Radius"
+        },
+        {
+            "type": "range",
+            "id": "card_padding",
+            "min": 0,
+            "max": 60,
+            "step": 5,
+            "default": 40,
+            "unit": "px",
+            "label": "Inner Padding"
+        },
+        {
+            "type": "checkbox",
+            "id": "enable_hover_effect",
+            "label": "Enable Lift on Hover",
+            "default": false
+        },
+        {
+            "type": "header",
+            "content": "Typography & Icons"
+        },
+        {
+            "type": "range",
+            "id": "icon_width",
+            "min": 20,
+            "max": 100,
+            "step": 5,
+            "default": 50,
+            "unit": "px",
+            "label": "Icon Size"
+        },
+        {
+            "type": "color",
+            "id": "text_color",
+            "label": "Text Color",
+            "default": "#000000"
+        },
+        {
+            "type": "range",
+            "id": "heading_font_size",
+            "min": 12,
+            "max": 40,
+            "step": 1,
+            "default": 18,
+            "unit": "px",
+            "label": "Heading Font Size"
+        },
+        {
+            "type": "range",
+            "id": "text_font_size",
+            "min": 10,
+            "max": 30,
+            "step": 1,
+            "default": 15,
+            "unit": "px",
+            "label": "Description Font Size"
+        },
+        {
+            "type": "header",
+            "content": "Section Padding"
+        },
+        {
+            "type": "range",
+            "id": "padding_top",
+            "min": 0,
+            "max": 100,
+            "step": 4,
+            "default": 36,
+            "unit": "px",
+            "label": "Top Padding"
+        },
+        {
+            "type": "range",
+            "id": "padding_bottom",
+            "min": 0,
+            "max": 100,
+            "step": 4,
+            "default": 36,
+            "unit": "px",
+            "label": "Bottom Padding"
+        }
+    ],
+    "blocks": [
+        {
+            "type": "feature",
+            "name": "Feature Box",
+            "limit": 3,
+            "settings": [
+                {
+                    "type": "image_picker",
+                    "id": "image",
+                    "label": "Icon Image"
+                },
+                {
+                    "type": "text",
+                    "id": "heading",
+                    "default": "Feature Title",
+                    "label": "Heading"
+                },
+                {
+                    "type": "textarea",
+                    "id": "text",
+                    "default": "Description of the feature.",
+                    "label": "Description"
+                }
+            ]
+        }
+    ],
+    "presets": [
+        {
+            "name": "Features Grid (Rewahard)",
+            "blocks": [
+                {
+                    "type": "feature",
+                    "settings": {
+                        "heading": "WORLDWIDE SHIPPING",
+                        "text": "Rewahard offers worldwide shipping. Shipping rates for Australia and the Rest of the Word is calculated at the checkout. Orders being sent in NZ are delivered via Express Post."
+                    }
+                },
+                {
+                    "type": "feature",
+                    "settings": {
+                        "heading": "JOIN THE REWACLUB",
+                        "text": "Want to earn points when you spend and shop at Rewahard? Sign up for Rewahard Rewards now!"
+                    }
+                },
+                {
+                    "type": "feature",
+                    "settings": {
+                        "heading": "LEADING FASHION STREETWEAR",
+                        "text": "Rewahard is your one stop shop to get all your new fresh fits. We specialise in the upmarket urban attire and exclusive designer collections!"
+                    }
+                }
+            ]
+        }
+    ]
+}
+{% endschema %}

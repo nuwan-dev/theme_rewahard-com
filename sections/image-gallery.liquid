@@ -1,0 +1,138 @@
+{% schema %}
+{
+  "name": "Gallery Grid",
+  "settings": [
+    {
+      "type": "text",
+      "id": "padding_desktop",
+      "label": "Section Padding (Desktop)",
+      "default": "40px 20px"
+    },
+    {
+      "type": "text",
+      "id": "padding_mobile",
+      "label": "Section Padding (Mobile)",
+      "default": "20px 16px"
+    },
+    {
+      "type": "text",
+      "id": "margin_desktop",
+      "label": "Section Margin (Desktop)",
+      "default": "40px 0px"
+    },
+    {
+      "type": "text",
+      "id": "margin_mobile",
+      "label": "Section Margin (Mobile)",
+      "default": "20px 0px"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "Grid Columns (Desktop)",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "checkbox",
+      "id": "clickable",
+      "label": "Make Images Clickable",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "image",
+      "name": "Gallery Image",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "alt_text",
+          "label": "Alt Text",
+          "default": "Gallery image"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Link URL"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Gallery Grid",
+      "category": "Image"
+    }
+  ]
+}
+{% endschema %}
+
+{% style %}
+.gallery-grid-wrapper {
+  padding: {{ section.settings.padding_desktop | default: '40px 20px' }};
+  margin: {{ section.settings.margin_desktop | default: '40px 0px' }};
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat({{ section.settings.columns }}, 1fr);
+  gap: 20px;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.02);
+}
+
+@media (max-width: 768px) {
+  .gallery-grid-wrapper {
+    padding: {{ section.settings.padding_mobile | default: '20px 16px' }};
+    margin: {{ section.settings.margin_mobile | default: '20px 0px' }};
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(1, 1fr);
+    gap:10px;
+  }
+}
+{% endstyle %}
+
+<div class="gallery-grid-wrapper">
+  <div class="gallery-grid">
+    {% for block in section.blocks %}
+      {% if block.settings.image %}
+        <div class="gallery-item">
+          {% if section.settings.clickable and block.settings.link != blank %}
+            <a href="{{ block.settings.link }}">
+              <img
+                src="{{ block.settings.image | image_url }}"
+                alt="{{ block.settings.alt_text | escape }}"
+                loading="lazy"
+              >
+            </a>
+          {% else %}
+            <img
+              src="{{ block.settings.image | image_url }}"
+              alt="{{ block.settings.alt_text | escape }}"
+              loading="lazy"
+            >
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>

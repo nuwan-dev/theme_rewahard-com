@@ -1,0 +1,293 @@
+{% comment %}
+  Custom Collection Grid – works on any page by selecting a collection manually
+{% endcomment %}
+
+{{ 'template-collection.css' | asset_url | stylesheet_tag }}
+{{ 'component-loading-overlay.css' | asset_url | stylesheet_tag }}
+
+{%- style -%}
+  {% render 'spaced-section' %}
+{%- endstyle -%}
+
+<style>
+  .sub-collection-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .sub-collection-slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sub-collection-slider::-webkit-scrollbar {
+    display: none;
+  }
+
+  .collection-item {
+    min-width: 100px;
+    max-width: 208px;
+    margin-right: 15px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .collection-item-img-div {
+    border-radius: 50%;
+    padding: 5px;
+    background: linear-gradient(45deg, #d91568, #ffc400);
+  }
+
+  .collection-item-img {
+    width: 195px;
+    height: 195px;
+    object-fit: cover;
+    border-radius: 50%;
+    overflow: hidden;
+    display: block;
+    border: 6px solid #fff;
+  }
+
+  .collection-item-img:hover {
+    border: 4px solid #fff;
+  }
+
+  .scroll-btn {
+    position: absolute;
+    top: 40%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 100;
+    display: none;
+  }
+
+  .left-btn {
+    left: 5px;
+  }
+
+  .right-btn {
+    right: 5px;
+  }
+
+  @media only screen and (max-width: 768px) {
+    .collection-item-img-div{
+      padding: 3px;
+    }
+
+    .collection-item-img {
+      width: 84px;
+      height: 84px;
+      border: 3px solid #fff;
+    }
+
+    .collection-item {
+      min-width: 80px;
+      max-width: 90px;
+      margin-right: 10px;
+      font-size: 12px;
+    }
+
+    .collection-item p {
+      width: 90px;
+      line-height: 20px;
+      font-size: 11px;
+    }
+
+    .scroll-btn {
+      top: 30%;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const slider = document.querySelector('.sub-collection-slider');
+    const leftBtn = document.querySelector('.left-btn');
+    const rightBtn = document.querySelector('.right-btn');
+
+    function getScrollAmount() {
+      return window.innerWidth <= 768 ? 200 : 400;
+    }
+
+    function updateButtons() {
+      if (!slider) return;
+      leftBtn.style.display = slider.scrollLeft > 0 ? 'block' : 'none';
+      rightBtn.style.display =
+        Math.ceil(slider.scrollLeft + slider.clientWidth) < slider.scrollWidth ? 'block' : 'none';
+    }
+
+    updateButtons();
+    slider?.addEventListener('scroll', updateButtons);
+    window.addEventListener('resize', updateButtons);
+
+    leftBtn?.addEventListener('click', function () {
+      slider.scrollBy({ left: -getScrollAmount(), behavior: 'smooth' });
+    });
+
+    rightBtn?.addEventListener('click', function () {
+      slider.scrollBy({ left: getScrollAmount(), behavior: 'smooth' });
+    });
+  });
+</script>
+
+{% assign selected_collection = collections[section.settings.collection] %}
+
+{% if selected_collection %}
+  {% if section.settings.show_header %}
+    <div class="container">
+      <h2 style="text-align: center; margin-bottom: 20px;">
+        {{ section.settings.custom_title | default: selected_collection.title }}
+      </h2>
+    </div>
+  {% endif %}
+  {% assign sub_handles = selected_collection.metafields.custom.sub_collections | split: ',' %}
+
+  {% if sub_handles.size > 0 %}
+    <div class="container" style="margin-bottom:20px;">
+      <div class="sub-collection-container">
+        <button class="scroll-btn left-btn">←</button>
+        <div class="sub-collection-slider">
+          {% for handle in sub_handles %}
+            {% assign sub_collection = collections[handle] %}
+            {% if sub_collection %}
+              <div class="collection-item">
+                <a href="{{ sub_collection.url }}">
+                  <div class="collection-item-img-div">
+                    <img
+                      src="{{ sub_collection.featured_image | img_url: 'medium' }}"
+                      class="collection-item-img"
+                      alt="{{ sub_collection.title }}"
+                    >
+                  </div>
+                  <p>{{ sub_collection.title }}</p>
+                </a>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <button class="scroll-btn right-btn">→</button>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="collection container">
+    <div class="collection-product-list load-more-grid" style="--per-row: {{ section.settings.per_row }}">
+      {% for product in selected_collection.products limit: section.settings.products_per_page %}
+        <div class="collection-product-card">
+          {% render 'product-card',
+            product_card_product: product,
+            media_size: section.settings.image_ratio,
+            media_fit: section.settings.image_fit,
+            show_secondary_image: section.settings.show_secondary_image,
+            show_vendor: section.settings.show_vendor,
+            show_desc: section.settings.show_desc,
+            section_id: section.id
+          %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div style="color: red; text-align: center; padding: 20px;">
+    ⚠️ No collection selected. Please choose one in the section settings.
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Custom Collection Grid",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_header",
+      "default": true,
+      "label": "Show section heading"
+    },
+    {
+      "type": "text",
+      "id": "custom_title",
+      "label": "Custom heading (optional)",
+      "default": "heading"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Select collection"
+    },
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "min": 4,
+      "max": 24,
+      "step": 1,
+      "default": 8,
+      "label": "Products to show"
+    },
+    {
+      "type": "range",
+      "id": "per_row",
+      "min": 2,
+      "max": 6,
+      "step": 1,
+      "default": 4,
+      "label": "Products per row"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_secondary_image",
+      "default": false,
+      "label": "Show secondary image"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "default": true,
+      "label": "Show vendor"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_desc",
+      "default": false,
+      "label": "Show description"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "Image ratio",
+      "options": [
+        { "value": "landscape", "label": "Landscape" },
+        { "value": "portrait", "label": "Portrait" },
+        { "value": "square", "label": "Square" }
+      ],
+      "default": "portrait"
+    },
+    {
+      "type": "select",
+      "id": "image_fit",
+      "label": "Image fit",
+      "options": [
+        { "value": "contain", "label": "Contain" },
+        { "value": "cover", "label": "Cover" }
+      ],
+      "default": "cover"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom Collection Grid",
+      "category": "Collection"
+    }
+  ]
+}
+{% endschema %}

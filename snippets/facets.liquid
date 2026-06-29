@@ -1,0 +1,1803 @@
+{% comment %}
+  	Renders facets (filtering and sorting)
+
+  	Accepts:
+  	- results: {Object} Collection or Search object
+  	- enable_filtering: {Boolean} Show filtering when true
+  	- enable_sorting: {Boolean} Show sorting when true
+
+  	Usage:
+  {% render 'facets', results: collection, enable_filtering: true, enable_sorting: true %}
+{% endcomment %}
+
+{% javascript %}
+  function attachSingleOpenBehavior(context = document) {
+    const detailsList = context.querySelectorAll('.filter__details');
+
+    detailsList.forEach((detail) => {
+      detail.addEventListener('toggle', () => {
+        if (detail.open) {
+          detailsList.forEach((other) => {
+            if (other !== detail && other.open) {
+              other.open = false;
+            }
+          });
+        }
+      });
+    });
+  }
+
+  // Run on first page load
+  document.addEventListener('DOMContentLoaded', () => {
+    attachSingleOpenBehavior();
+
+    // Reattach after Shopify AJAX filtering refresh
+    document.addEventListener('shopify:section:load', (e) => {
+      attachSingleOpenBehavior(e.target);
+    });
+
+    // Reattach after facet filter redraw (used in Online Store 2.0)
+    document.addEventListener('facets:updated', (e) => {
+      attachSingleOpenBehavior(e.target);
+    });
+  });
+{% endjavascript %}
+
+<style>
+  /* MOBILE ≤ 768px: show button and drawer; hide desktop container */
+  @media (max-width: 768px) {
+
+    .open_filters {
+      display: inline-flex;
+    }
+    .filter-container {
+      display: none;
+    }
+
+    /* If you open via the hash (#open_filters_menu), show the drawer */
+    #open_filters_menu:target .facets-menu {
+      display: block;
+    }
+
+    #open_filters_menu .facets-menu {  z-index: 1001; }
+    #open_filters_menu .form-menu__mask {  z-index: 1000; }
+
+    .category-tree__l1-item .category-tree__col--l2 { display: none; }
+    /* show L2 when THIS L1 checkbox is checked */
+    .category-tree__l1-item:has(.category-tree__l1-input:checked) .category-tree__col--l2 {
+      display: block;
+      margin-top: 2rem;
+    }
+
+    /* (optional) a bit of indent for the nested L2 list */
+    .category-tree__col--l2 { padding-left: 12px; }
+
+    .category-tree__l2-item{
+      list-style:none;
+    }
+
+    @supports not (selector(:has(*))) {
+    @media (max-width: 768px) {
+      .category-tree__l1-item .category-tree__col--l2 { display: none; }
+      .category-tree__l1-item.is-open .category-tree__col--l2 { display: block; }
+    }
+  }
+  /* DESKTOP ≥ 769px: show desktop filters, hide button and drawer */
+  @media (min-width: 769px) {
+    .open_filters[aria-disabled='true'] {
+      cursor: not-allowed;
+      opacity: 0.6; /* visual cue */
+      text-decoration: none;
+    }
+    .facets-menu {
+      display: none !important;
+    } /* drawer never appears */
+    .facets__product-count {
+      display: none;
+    }
+  }
+</style>
+
+{%- liquid
+  assign sort_by = results.sort_by | default: results.default_sort_by
+  assign total_active_values = 0
+  if results.url
+    assign results_url = results.url
+  else
+    assign terms = results.terms | escape
+    assign results_url = '?q=' | append: terms | append: '&options%5Bprefix%5D=last&sort_by=' | append: sort_by
+  endif
+  for filter in results.filters
+    assign total_active_values = total_active_values | plus: filter.active_values.size
+  endfor
+-%}
+<div id="open_filters_menu">
+  <a href="##" class="form-menu__mask no_submit"></a>
+  <facet-filters-form>
+    <form id="FacetFiltersForm">
+      {% if taypes_position == 'in_header' %}
+        <div class="container type-filter__container">
+          <ul class="type-filter__list">
+            {%- for filter in results.filters -%}
+              {% if filter.type == 'list' and filter.param_name == 'filter.p.product_type' %}
+                {%- for value in filter.values -%}
+                  <li>
+                    <label class="type-filter__label{% if value.count == 0 and value.active == false %} facets-checkbox--disabled{% endif %}">
+                      <input
+                        type="checkbox"
+                        name="{{ value.param_name }}"
+                        value="{{ value.value }}"
+                        class="type-filter__input"
+                        {% if value.active %}
+                          checked
+                        {% endif %}
+                        {% if value.count == 0 and value.active == false %}
+                          disabled
+                        {% endif %}
+                      >
+                      <span class="type-filter__title h4">
+                        {{- value.label | escape -}}
+                      </span>
+                    </label>
+                  </li>
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      <div class="facets">
+        {%- if results.terms -%}
+          <input type="hidden" name="q" value="{{ results.terms | escape }}">
+          <input name="options[prefix]" type="hidden" value="last">
+        {%- endif -%}
+
+        <div class="container">
+          <div class="facets__wrapper">
+            {% if enable_filtering %}
+              <a
+                href="#open_filters_menu"
+                class="button open_filters no_submit"
+              >
+                {% render 'icon-filter' -%}
+                {{- 'products.facets.filter_button' | t }}
+              </a>
+              {%- assign l1_filter = null -%}
+              {%- assign tree_filter = null -%}
+
+              {%- for f in results.filters -%}
+                {% if f.label == 'Category' %}
+                  {% assign l1_filter = f %}
+                {% elsif f.label == 'Category-L2' %}
+                  {% assign tree_filter = f %}
+                {% endif %}
+              {%- endfor -%}
+
+              {%- assign l1_total_values = 0 -%}
+              {% if l1_filter %}
+                {% for parent_value in l1_filter.values %}
+                  {% if parent_value.label != blank %}
+                    {% assign l1_total_values = l1_total_values | plus: 1 %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              {%- assign hide_l1_on_base_collection = false -%}
+              {% if l1_total_values == 1 %}
+                {% assign hide_l1_on_base_collection = true %}
+              {% endif %}
+
+              {%- comment -%}
+                Detect if this collection effectively has only one L2 option
+                (i.e. only one Category-L2 value with products / active).
+              {%- endcomment -%}
+              {%- assign single_l2_count = 0 -%}
+              {%- assign single_l2_value = '' -%}
+
+              {% if tree_filter %}
+                {% for tree_value in tree_filter.values %}
+                  {% if tree_value.count > 0 or tree_value.active %}
+                    {% assign single_l2_count = single_l2_count | plus: 1 %}
+                    {% if single_l2_count == 1 %}
+                      {% assign single_l2_value = tree_value.value %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              {%- assign lock_single_l2 = false -%}
+              {% if single_l2_count == 1 %}
+                {% assign lock_single_l2 = true %}
+              {% endif %}
+
+              <!-- DESKTOP filters wrapper -->
+              <div class="filter-container" data-facets-scope="desktop">
+                <div class="filter-wrapper">
+                  {% assign id_scope = 'd' %}
+                  <!-- This is the filter for "best seller" and "new arrival" -->
+                  <details
+                    id="Details-{{ id_scope }}-featured-{{ section.id }}"
+                    class="filter__details js-filter filter__details--featured"
+                    data-index="{{ id_scope }}-0"
+                  >
+                    <summary>
+                      <h4 class="facets__details-title">Featured</h4>
+                      {% render 'icon-filter-two' %}
+                    </summary>
+
+                    <fieldset class="facets-wrap parent-wrap filter-featured">
+                      <legend class="visually-hidden">Featured</legend>
+
+                      <ul class="facets__list featured__list" role="list">
+                        {%- comment -%} "Best seller" → sort_by=best-selling {%- endcomment -%}
+                        {%- capture option_id_best -%}
+                          Featured-best-{{ id_scope }}-{{ section.id }}
+                        {%- endcapture -%}
+                        <li class="featured__list-item">
+                          <label
+                            for="{{ option_id_best }}"
+                            class="facets-checkbox"
+                          >
+                            <input
+                              type="checkbox"
+                              id="{{ option_id_best }}"
+                              class="focus-inset facets-checkbox__hide"
+                              data-featured-sort="best-selling"
+                              {% if sort_by == 'best-selling' %}
+                                checked
+                              {% endif %}
+                            >
+                            <span class="facets-checkbox__marker">
+                              {%- render 'icon-facets-checkmark' -%}
+                            </span>
+                            <span class="facets-checkbox__label"> Best seller </span>
+                          </label>
+                        </li>
+
+                        {%- comment -%} "New arrival" → sort_by=created-descending {%- endcomment -%}
+                        {%- capture option_id_new -%}
+                          Featured-new-{{ id_scope }}-{{ section.id }}
+                        {%- endcapture -%}
+                        <li class="featured__list-item">
+                          <label
+                            for="{{ option_id_new }}"
+                            class="facets-checkbox"
+                          >
+                            <input
+                              type="checkbox"
+                              id="{{ option_id_new }}"
+                              class="focus-inset facets-checkbox__hide"
+                              data-featured-sort="created-descending"
+                              {% if sort_by == 'created-descending' %}
+                                checked
+                              {% endif %}
+                            >
+                            <span class="facets-checkbox__marker">
+                              {%- render 'icon-facets-checkmark' -%}
+                            </span>
+                            <span class="facets-checkbox__label"> New arrival </span>
+                          </label>
+                        </li>
+                      </ul>
+                    </fieldset>
+                  </details>
+                  <!-- filter for "best seller" and "new arrival" end -->
+
+                  {%- for filter in results.filters -%}
+                    {% assign presentation = filter.presentation | default: default_presentation %}
+                    {% if taypes_position == 'in_header' and filter.param_name == 'filter.p.product_type' %}
+                      {% continue %}
+                    {% endif %}
+                    {%- comment -%}
+                      Special UI for the "Category" filter: show L1 on the left,
+                      L2 (Breadcrumb) on the right, all inside one <details>.
+                    {%- endcomment -%}
+                    {% if filter.label == 'Category' and l1_filter and tree_filter %}
+                      {%- assign category_open = false -%}
+                      {% if l1_filter.active_values.size > 0 or tree_filter.active_values.size > 0 %}
+                        {% assign category_open = true %}
+                      {% endif %}
+
+                      {%- comment -%}
+                        Determine which parent (L1) is currently "selected" for showing children.
+                        If an L1 is active, use that; otherwise default to the first L1 value.
+                      {%- endcomment -%}
+                      {% assign selected_parent = '' %}
+                      {% if l1_filter.active_values.size > 0 %}
+                        {% assign selected_parent = l1_filter.active_values.first.label | strip %}
+                      {% endif %}
+
+                      <details
+                        id="Details-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                        class="filter__details js-filter filter__details--category"
+                        data-index="{{ id_scope }}-{{ forloop.index }}"
+                        {% if category_open %}
+                          open
+                        {% endif %}
+                      >
+                        <summary>
+                          <h4 class="facets__details-title">
+                            {{ filter.label | escape }}
+                          </h4>
+                          {% render 'icon-filter-two' %}
+                        </summary>
+
+                        <fieldset class="facets-wrap parent-wrap category-tree">
+                          <legend class="visually-hidden">{{ filter.label | escape }}</legend>
+
+                          {% if hide_l1_on_base_collection %}
+                            {%- comment -%} ✅ Base collection has only one L1 → hide L1, show L2 only {%- endcomment -%}
+
+                            {% assign single_parent = '' %}
+                            {% for parent_value in l1_filter.values %}
+                              {% if parent_value.count > 0 or parent_value.active %}
+                                {% assign single_parent = parent_value.label | strip %}
+                              {% endif %}
+                            {% endfor %}
+
+                            <ul class="facets__list" role="list">
+                              {% for tree_value in tree_filter.values %}
+                                {% assign parts = tree_value.label | split: ',' %}
+                                {% assign tree_parent = parts | first | strip %}
+                                {% assign tree_child = parts | last | strip %}
+
+                                {% if tree_parent == single_parent %}
+                                  {% capture l2_option_id %}
+                                    Filter-{{ id_scope }}-{{ section.id }}-{{ tree_filter.param_name | handle }}-{{ tree_value.value | handle }}-{{ forloop.index0 }}
+                                  {% endcapture %}
+                                  <li class="list-menu__item facets__item">
+                                    <label
+                                      for="{{ l2_option_id }}"
+                                      class="facets-checkbox{% if tree_value.count == 0 and tree_value.active == false %} facets-checkbox--disabled{% endif %}"
+                                    >
+                                      {% assign is_single_forced_l2 = false %}
+                                      {% if lock_single_l2 and tree_value.value == single_l2_value %}
+                                        {% assign is_single_forced_l2 = true %}
+                                      {% endif %}
+
+                                      <input
+                                        type="checkbox"
+                                        class="focus-inset facets-checkbox__hide"
+                                        name="{{ tree_value.param_name }}"
+                                        value="{{ tree_value.value }}"
+                                        id="{{ l2_option_id }}"
+                                        {% if is_single_forced_l2 %}
+                                          checked="checked"
+                                          disabled="disabled"
+                                          data-single-l2="true"
+                                        {% else %}
+                                          {% if tree_value.active %}
+                                            checked
+                                          {% endif %}
+                                          {% if tree_value.count == 0 and tree_value.active == false %}
+                                            disabled
+                                          {% endif %}
+                                        {% endif %}
+                                      >
+                                      <span class="facets-checkbox__marker">
+                                        {%- render 'icon-facets-checkmark' -%}
+                                      </span>
+                                      <span class="facets-checkbox__label">{{ tree_child }}</span>
+                                      <span class="facets-checkbox__count"> ({{ tree_value.count }}) </span>
+                                    </label>
+                                  </li>
+                                {% endif %}
+                              {% endfor %}
+                            </ul>
+
+                          {% else %}
+                            {%- comment -%}
+                              ✅ Normal case (OR any filtered state): show full L1 + nested L2 tree.
+                              JS + CSS will control which L2 group is visible.
+                            {%- endcomment -%}
+
+                            <ul class="facets__list category-tree__l1-list" role="list">
+                              {% for parent_value in l1_filter.values %}
+                                {% assign parent_label = parent_value.label | strip %}
+                                {% capture option_id %}
+          CategoryL1-{{ id_scope }}-{{ section.id }}-{{ parent_value.value | handle }}-{{ forloop.index0 }}
+        {% endcapture %}
+
+                                <li class="category-tree__l1-item{% if parent_value.active %} is-selected{% endif %}">
+                                  <label
+                                    for="{{ option_id }}"
+                                    class="facets-checkbox category-tree__l1-label{% if parent_value.count == 0 and parent_value.active == false %} facets-checkbox--disabled{% endif %}"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      id="{{ option_id }}"
+                                      class="category-tree__l1-input facets-checkbox__hide"
+                                      name="{{ parent_value.param_name }}"
+                                      value="{{ parent_value.value }}"
+                                      data-category-parent-label="{{ parent_label | escape }}"
+                                      data-category-parent-key="{{ parent_label | handle }}"
+                                      {% if parent_value.active %}
+                                        checked
+                                      {% endif %}
+                                      {% if parent_value.count == 0 and parent_value.active == false %}
+                                        disabled
+                                      {% endif %}
+                                    >
+                                    <span class="facets-checkbox__marker">
+                                      {%- render 'icon-facets-checkmark' -%}
+                                    </span>
+                                    <span class="facets-checkbox__label">{{ parent_label }}</span>
+                                    <span class="facets-checkbox__count"> ({{ parent_value.count }}) </span>
+                                  </label>
+
+                                  <!-- Nested L2 for THIS L1 -->
+                                  <div class="category-tree__col category-tree__col--l2">
+                                    <ul class="facets__list category-tree__l2-list" role="list">
+                                      {% for tree_value in tree_filter.values %}
+                                        {% assign parts = tree_value.label | split: ',' %}
+                                        {% assign tree_parent = parts | first | strip %}
+                                        {% assign tree_child = parts | last | strip %}
+
+                                        {% if tree_parent == parent_label %}
+                                          {% capture l2_option_id %}
+                    Filter-{{ id_scope }}-{{ section.id }}-{{ tree_filter.param_name | handle }}-{{ tree_value.value | handle }}-{{ forloop.index0 }}
+                  {% endcapture %}
+                                          <li
+                                            class="category-tree__l2-item facets__item"
+                                            data-category-parent-key="{{ tree_parent | handle }}"
+                                          >
+                                            <label
+                                              for="{{ l2_option_id }}"
+                                              class="facets-checkbox{% if tree_value.count == 0 and tree_value.active == false %} facets-checkbox--disabled{% endif %}"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                class="focus-inset facets-checkbox__hide"
+                                                name="{{ tree_value.param_name }}"
+                                                value="{{ tree_value.value }}"
+                                                id="{{ l2_option_id }}"
+                                                {% if tree_value.active %}
+                                                  checked
+                                                {% endif %}
+                                                {% if tree_value.count == 0 and tree_value.active == false %}
+                                                  disabled
+                                                {% endif %}
+                                              >
+                                              <span class="facets-checkbox__marker">
+                                                {%- render 'icon-facets-checkmark' -%}
+                                              </span>
+                                              <span class="facets-checkbox__label">{{ tree_child }}</span>
+                                              <span class="facets-checkbox__count"> ({{ tree_value.count }}) </span>
+                                            </label>
+                                          </li>
+                                        {% endif %}
+                                      {% endfor %}
+                                    </ul>
+                                  </div>
+                                  <!-- /Nested L2 -->
+                                </li>
+                              {% endfor %}
+                            </ul>
+                          {% endif %}
+                        </fieldset>
+                      </details>
+
+                      {% continue %}
+                    {% endif %}
+
+                    {% if filter.label == 'Category-L2' %}
+                      {% continue %}
+                    {% endif %}
+
+                    {% assign presentation = filter.presentation | default: default_presentation %}
+                    {% if taypes_position == 'in_header' and filter.param_name == 'filter.p.product_type' %}
+                      {% continue %}
+                    {% endif %}
+                    <details
+                      id="Details-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                      class="filter__details js-filter {% if filter.type == 'price_range' %} facets__details-last {% endif %}"
+                      {% comment %} {% if filter.param_name == "filter.p.vendor" %} facets__details-first {% endif %} {% endcomment %}
+                      data-index="{{ id_scope }}-{{ forloop.index }}"
+                    >
+                      <summary>
+                        <h4 class="facets__details-title">
+                          {{ filter.label | escape }}
+                        </h4>
+                        {% render 'icon-filter-two' %}
+                      </summary>
+                      {% case filter.type %}
+                        {% when 'boolean', 'list' %}
+                          {% if filter.label == 'Color' %}
+                            <fieldset class="facets-wrap parent-wrap">
+                              <legend class="visually-hidden">{{ filter.label | escape }}</legend>
+
+                              <ul
+                                class="facets__list"
+                                role="list"
+                                style="--image_filter_columns: {{ image_filter_columns }};"
+                              >
+                                {%- for value in filter.values -%}
+                                  {%- assign color_label = value.label | strip -%}
+                                  {%- assign color_hex = '' -%}
+
+                                  {%- case color_label -%}
+                                    {%- when 'Black' -%}
+                                      {% assign color_hex = '#000000' %}
+                                    {%- when 'White' -%}
+                                      {% assign color_hex = '#ffffff' %}
+                                    {%- when 'Gray' -%}
+                                      {% assign color_hex = '#808080' %}
+                                    {%- when 'Grey' -%}
+                                      {% assign color_hex = '#808080' %}
+                                    {%- when 'Blue' -%}
+                                      {% assign color_hex = '#0055ff' %}
+                                    {%- when 'Navy' -%}
+                                      {% assign color_hex = '#001f3f' %}
+                                    {%- when 'Red' -%}
+                                      {% assign color_hex = '#ff0000' %}
+                                    {%- when 'Khaki' -%}
+                                      {% assign color_hex = '#c3b091' %}
+                                    {%- when 'Charcoal' -%}
+                                      {% assign color_hex = '#333333' %}
+                                    {%- when 'Graphite' -%}
+                                      {% assign color_hex = '#4a4a4a' %}
+                                    {%- when 'Burgundy' -%}
+                                      {% assign color_hex = '#800020' %}
+                                    {%- when 'Maroon' -%}
+                                      {% assign color_hex = '#800000' %}
+                                    {%- when 'Green' -%}
+                                      {% assign color_hex = '#008000' %}
+                                    {%- when 'Camo' -%}
+                                      {% assign color_hex = '#6b7b4d' %}
+                                    {%- when 'Sand' -%}
+                                      {% assign color_hex = '#e7d7a9' %}
+                                    {%- when 'Yellow' -%}
+                                      {% assign color_hex = '#ffd700' %}
+                                    {%- when 'Gold' -%}
+                                      {% assign color_hex = '#d4af37' %}
+                                    {%- when 'Multi-color' -%}
+                                      {% assign color_hex = '#ff69b4' %}
+                                    {%- when 'Bone' -%}
+                                      {% assign color_hex = '#e8dfd2' %}
+                                    {%- when 'Orange' -%}
+                                      {% assign color_hex = '#ff8c00' %}
+                                    {%- when 'Pink' -%}
+                                      {% assign color_hex = '#ffc0cb' %}
+                                    {%- when 'Purple' -%}
+                                      {% assign color_hex = '#800080' %}
+                                    {%- when 'Silver' -%}
+                                      {% assign color_hex = '#c0c0c0' %}
+                                    {%- when 'Wood' -%}
+                                      {% assign color_hex = '#a97458' %}
+                                    {%- when 'Brown' -%}
+                                      {% assign color_hex = '#5c4033' %}
+                                    {%- when 'Bandana-black' -%}
+                                      {% assign color_hex = '#000000' %}
+                                    {%- when 'Bandana-white' -%}
+                                      {% assign color_hex = '#ffffff' %}
+                                    {%- when 'Bandana-blue' -%}
+                                      {% assign color_hex = '#1e3a8a' %}
+                                    {%- when 'Bandana-red' -%}
+                                      {% assign color_hex = '#b91c1c' %}
+                                    {%- when 'N/A' -%}
+                                      {% assign color_hex = '#cccccc' %}
+                                  {%- endcase -%}
+
+                                  {%- assign is_bandana = false -%}
+                                  {% if color_label == 'Bandana-black'
+                                    or color_label == 'Bandana-white'
+                                    or color_label == 'Bandana-blue'
+                                    or color_label == 'Bandana-red'
+                                    or color_label == 'Tree-Camo'
+                                    or color_label == 'Snow-Tree-Camo'
+                                  %}
+                                    {% assign is_bandana = true %}
+                                  {% endif %}
+
+                                  <li class="list-menu__item facets__item">
+                                    <label class="facets-checkbox{% if value.count == 0 and value.active == false %} facets-checkbox--disabled{% endif %}">
+                                      <input
+                                        type="checkbox"
+                                        name="{{ value.param_name }}"
+                                        value="{{ value.value }}"
+                                        class="facets-checkbox__hide"
+                                        {% if value.active %}
+                                          checked
+                                        {% endif %}
+                                        {% if value.count == 0 and value.active == false %}
+                                          disabled
+                                        {% endif %}
+                                      >
+
+                                      <span class="facets-checkbox__marker">
+                                        {%- render 'icon-facets-checkmark' -%}
+                                      </span>
+
+                                      <span class="facets-color-swatch-wrapper">
+                                        {% if is_bandana %}
+                                          {%- assign bandana_key = color_label | handle -%}
+                                          {%- assign bandana_file = bandana_key | append: '.jpg' -%}
+                                          <span class="facets-color-swatch facets-color-swatch--bandana">
+                                            <img
+                                              src="{{ bandana_file | file_url }}"
+                                              alt="{{ color_label }}"
+                                              loading="lazy"
+                                            >
+                                          </span>
+                                        {% else %}
+                                          <span
+                                            class="facets-color-swatch"
+                                            style="background-color: {{ color_hex }};"
+                                          ></span>
+                                        {% endif %}
+
+                                        <span class="facets-checkbox__label">{{ color_label }}</span>
+                                      </span>
+
+                                      <span class="facets-checkbox__count">({{ value.count }})</span>
+                                    </label>
+                                  </li>
+                                {%- endfor -%}
+                              </ul>
+                            </fieldset>
+
+                          {% else %}
+                            {% comment %}
+                              {# ---------- DEFAULT LIST / BOOLEAN FILTER ---------- #}
+                            {% endcomment %}
+                            <fieldset class="facets-wrap parent-wrap">
+                              <legend class="visually-hidden">
+                                {{ filter.label | escape }}
+                              </legend>
+                              <ul
+                                class="facets__list"
+                                role="list"
+                                style="--image_filter_columns: {{ image_filter_columns }};"
+                              >
+                                {%- for value in filter.values -%}
+                                  <li class="list-menu__item facets__item">
+                                    <label class="facets-checkbox{% if value.count == 0 and value.active == false %} facets-checkbox--disabled{% endif %}">
+                                      <input
+                                        type="checkbox"
+                                        name="{{ value.param_name }}"
+                                        value="{{ value.value }}"
+                                        class="facets-checkbox__hide"
+                                        {% if value.active %}
+                                          checked
+                                        {% endif %}
+                                        {% if value.count == 0 and value.active == false %}
+                                          disabled
+                                        {% endif %}
+                                      >
+                                      <span class="facets-checkbox__marker">
+                                        {%- render 'icon-facets-checkmark' -%}
+                                      </span>
+                                      <span class="facets-checkbox__label">
+                                        {{- value.label | escape -}}
+                                      </span>
+                                      <span class="facets-checkbox__count">
+                                        (
+                                        {{- value.count -}}
+                                        )
+                                      </span>
+                                    </label>
+                                  </li>
+                                {%- endfor -%}
+                              </ul>
+                            </fieldset>
+                          {% endif %}
+                        {% when 'price_range' %}
+                          {% liquid
+                            assign currencies_using_comma_decimals = 'ANG,ARS,BRL,BYN,BYR,CLF,CLP,COP,CRC,CZK,DKK,EUR,HRK,HUF,IDR,ISK,MZN,NOK,PLN,RON,RUB,SEK,TRY,UYU,VES,VND' | split: ','
+                            assign uses_comma_decimals = false
+                            if currencies_using_comma_decimals contains cart.currency.iso_code
+                              assign uses_comma_decimals = true
+                            endif
+
+                            assign max_price_amount = filter.range_max | money | strip_html | escape
+                          %}
+                          <price-range class="facets__price">
+                            {% liquid
+                              if uses_comma_decimals
+                                assign max_price = filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.'
+                              else
+                                assign max_price = filter.range_max | money_without_currency | replace: ',', ''
+                              endif
+
+                              if uses_comma_decimals
+                                if filter.min_value.value
+                                  assign current_price_min = filter.min_value.value | money_without_currency | replace: '.', '' | replace: ',', '.'
+                                  assign range_min = current_price_min | divided_by: max_price | times: 100
+                                else
+                                  assign range_min = 0
+                                  assign current_price_min = 0
+                                endif
+                              else
+                                if filter.min_value.value
+                                  assign current_price_min = filter.min_value.value | money_without_currency | replace: ',', ''
+                                  assign range_min = current_price_min | divided_by: max_price | times: 100
+                                else
+                                  assign range_min = 0
+                                  assign current_price_min = 0
+                                endif
+                              endif
+
+                              if uses_comma_decimals
+                                if filter.max_value.value
+                                  assign current_price_max = filter.max_value.value | money_without_currency | replace: '.', '' | replace: ',', '.'
+                                  assign range_max = current_price_max | divided_by: max_price | times: 100
+                                else
+                                  assign current_price_max = max_price
+                                  assign range_max = 100
+                                endif
+                              else
+                                if filter.max_value.value
+                                  assign current_price_max = filter.max_value.value | money_without_currency | replace: ',', ''
+                                  assign range_max = current_price_max | divided_by: max_price | times: 100
+                                else
+                                  assign current_price_max = max_price
+                                  assign range_max = 100
+                                endif
+                              endif
+                            %}
+                            <div
+                              class="facets__price-ranges"
+                              id="Facet-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                            >
+                              <div class="facets__price-range facets__price-wrapper field">
+                                <label>
+                                  <span>{{- cart.currency.symbol -}}</span>
+                                  <input
+                                    class="facets__price-range__input field__input"
+                                    name="{{ filter.min_value.param_name }}"
+                                    id="Filter-{{ id_scope }}-{{ filter.label | escape }}-GTE"
+                                    {%- if filter.min_value.value -%}
+                                      {%- if uses_comma_decimals -%}
+                                        value="{{ filter.min_value.value | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                      {%- else -%}
+                                        value="{{ filter.min_value.value | money_without_currency | replace: ',', '' }}"
+                                      {%- endif %}
+                                    {%- endif -%}
+                                    type="number"
+                                    placeholder="{{- 'products.facets.from' | t -}}"
+                                    min="0"
+                                    {%- if uses_comma_decimals -%}
+                                      max="{{ filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                    {%- else -%}
+                                      max="{{ filter.range_max | money_without_currency | replace: ',', '' }}"
+                                    {% endif %}
+                                  >
+                                </label>
+                                <span class="facets__price-range__delimiter"></span>
+                                <label>
+                                  <span>{{- cart.currency.symbol -}}</span>
+                                  <input
+                                    class="facets__price-range__input field__input"
+                                    name="{{ filter.max_value.param_name }}"
+                                    id="Filter-{{ id_scope }}-{{ filter.label | escape }}-LTE"
+                                    {%- if filter.max_value.value -%}
+                                      {%- if uses_comma_decimals -%}
+                                        value="{{ filter.max_value.value | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                      {%- else -%}
+                                        value="{{ filter.max_value.value | money_without_currency | replace: ',', '' }}"
+                                      {%- endif %}
+                                    {%- endif -%}
+                                    type="number"
+                                    placeholder="{{- 'products.facets.to' | t -}}"
+                                    min="0"
+                                    {%- if uses_comma_decimals -%}
+                                      max="{{ filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                    {%- else -%}
+                                      max="{{ filter.range_max | money_without_currency | replace: ',', '' }}"
+                                    {% endif %}
+                                  >
+                                </label>
+                              </div>
+                              <div
+                                class="facets__range no-js-hidden"
+                                style="--range-min: {{ range_min }}%; --range-max: {{ range_max }}%"
+                              >
+                                <input
+                                  type="range"
+                                  value="{{ current_price_min }}"
+                                  min="0"
+                                  max="{{ max_price }}"
+                                  class="field__range"
+                                  aria-label="price range"
+                                >
+                                <input
+                                  type="range"
+                                  value="{{ current_price_max }}"
+                                  min="0"
+                                  max="{{ max_price }}"
+                                  class="field__range"
+                                  aria-label="price range"
+                                >
+                              </div>
+                              <span class="facets__price-label">
+                                {{- 'products.facets.price_range' | t: min_price: 0, max_price: max_price_amount -}}
+                              </span>
+                            </div>
+                          </price-range>
+                      {% endcase %}
+                    </details>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="facets__product-count" id="ProductCount">
+                <input type="hidden" value="{{ results.products_count }}" data-total-products>
+                {% if facets_count_type == 'default' %}
+                  {%- if results.results_count -%}
+                    {{ 'templates.search.results_with_count' | t: terms: results.terms, count: results.results_count }}
+                  {%- else -%}
+                    {{
+                      'products.facets.product_count'
+                      | t: product_count: results.products_count, count: results.all_products_count
+                    }}
+                  {%- endif -%}
+                {% elsif facets_count_type == 'alternative' %}
+                  {% if settings.pagination_type == 'pagination' %}
+                    {% liquid
+                      assign count = results.products_count
+                      assign total = per_page | times: current_page
+                      if total >= count
+                        assign total = count
+                      endif
+                      if count == 1
+                        assign text = 'product'
+                      else
+                        assign text = 'products'
+                      endif
+                    %}
+                    <span
+                      >Showing {{ total }} of {{ count }}
+                      {{ text -}}
+                    </span>
+                  {% else %}
+                    <span class="showing-text"></span>
+                  {% endif %}
+                {% endif %}
+              </div>
+            {% endif %}
+            {%- if enable_sorting -%}
+              <div class="facets__sort-by">
+                {%- assign sort_by = results.sort_by | default: results.default_sort_by -%}
+                <div class="facets__select-label">
+                  {{ 'products.facets.sort_by_label' | t }}
+                </div>
+                <select
+                  name="sort_by"
+                  class="select__sort_by"
+                  id="SortBy"
+                  aria-describedby="a11y-refresh-page-message"
+                  data-default-sort="{{ results.default_sort_by }}"
+                >
+                  {%- for option in results.sort_options -%}
+                    <option
+                      value="{{ option.value | escape }}"
+                      {% if option.value == sort_by %}
+                        selected="selected"
+                      {% endif %}
+                    >
+                      {{ option.name | escape }}
+                    </option>
+                  {%- endfor -%}
+                </select>
+                {% render 'icon-filter-two' %}
+              </div>
+              <noscript>
+                <button class="button button--primary">
+                  {{ 'products.facets.sort_button' | t }}
+                </button>
+              </noscript>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% comment %} facets menu start {% endcomment %}
+
+      <div class="facets-menu">
+        {%- if results.terms -%}
+          <input type="hidden" name="q" value="{{ results.terms | escape }}">
+          <input name="options[prefix]" type="hidden" value="last">
+        {%- endif -%}
+        <a href="##" class="facets-menu__close no_submit">
+          {% render 'icon-close' %}
+        </a>
+        <h2 class="facets-menu__title mobile-facets__open">
+          {{ 'products.facets.filter_by_label' | t: count: total_active_values }}
+        </h2>
+        <div class="facets-menu__all-items-count">
+          {%- if search.results_count -%}
+            {{ 'templates.search.results_count' | t: count: search.results_count }}
+          {%- else -%}
+            {{ 'products.facets.product_count_simple' | t: count: results.all_products_count }}
+          {%- endif -%}
+        </div>
+        <!-- MOBILE drawer filters wrapper -->
+        <div class="facets__details__wrapper" data-facets-scope="mobile">
+          <div class="facets__details__wrapper">
+            {% assign id_scope = 'm' %}
+            {%- comment -%} Mobile Featured filter (Best seller / New arrival) {%- endcomment -%}
+            <details
+              id="Details-{{ id_scope }}-featured-{{ section.id }}"
+              class="filter__details js-filter filter__details--featured"
+              data-index="{{ id_scope }}-0"
+            >
+              <summary>
+                <h4 class="facets__details-title">Featured</h4>
+                {% render 'icon-filter-two' %}
+              </summary>
+
+              <fieldset class="facets-wrap parent-wrap filter-featured">
+                <legend class="visually-hidden">Featured</legend>
+
+                <ul class="facets__list featured__list" role="list">
+                  {%- comment -%} "Best seller" → sort_by=best-selling {%- endcomment -%}
+                  {%- capture option_id_best_m -%}
+                    Featured-best-{{ id_scope }}-{{ section.id }}
+                  {%- endcapture -%}
+                  <li class="featured__list-item">
+                    <label
+                      for="{{ option_id_best_m }}"
+                      class="facets-checkbox"
+                    >
+                      <input
+                        type="checkbox"
+                        id="{{ option_id_best_m }}"
+                        class="focus-inset facets-checkbox__hide"
+                        data-featured-sort="best-selling"
+                        {% if sort_by == 'best-selling' %}
+                          checked
+                        {% endif %}
+                      >
+                      <span class="facets-checkbox__marker">
+                        {%- render 'icon-facets-checkmark' -%}
+                      </span>
+                      <span class="facets-checkbox__label"> Best seller </span>
+                    </label>
+                  </li>
+
+                  {%- comment -%} "New arrival" → sort_by=created-descending {%- endcomment -%}
+                  {%- capture option_id_new_m -%}
+            Featured-new-{{ id_scope }}-{{ section.id }}
+          {%- endcapture -%}
+                  <li class="featured__list-item">
+                    <label
+                      for="{{ option_id_new_m }}"
+                      class="facets-checkbox"
+                    >
+                      <input
+                        type="checkbox"
+                        id="{{ option_id_new_m }}"
+                        class="focus-inset facets-checkbox__hide"
+                        data-featured-sort="created-descending"
+                        {% if sort_by == 'created-descending' %}
+                          checked
+                        {% endif %}
+                      >
+                      <span class="facets-checkbox__marker">
+                        {%- render 'icon-facets-checkmark' -%}
+                      </span>
+                      <span class="facets-checkbox__label"> New arrival </span>
+                    </label>
+                  </li>
+                </ul>
+              </fieldset>
+            </details>
+            {%- comment -%} End mobile Featured {%- endcomment -%}
+            <!-- filter for "best seller" and "new arrival" end -->
+            {%- for filter in results.filters -%}
+              {% assign presentation = filter.presentation | default: default_presentation %}
+              {% if taypes_position == 'in_header' and filter.param_name == 'filter.p.product_type' %}
+                {% continue %}
+              {% endif %}
+              {%- comment -%}
+                Special UI for the "Category" filter: show L1 on the left,
+                L2 (Breadcrumb) on the right, all inside one <details>.
+              {%- endcomment -%}
+              {% if filter.label == 'Category' and l1_filter and tree_filter %}
+                {%- assign category_open = false -%}
+                {% if l1_filter.active_values.size > 0 or tree_filter.active_values.size > 0 %}
+                  {% assign category_open = true %}
+                {% endif %}
+
+                <details
+                  id="Details-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                  class="filter__details js-filter filter__details--category"
+                  data-index="{{ id_scope }}-{{ forloop.index }}"
+                  {% if category_open %}
+                    open
+                  {% endif %}
+                >
+                  <summary>
+                    <h4 class="facets__details-title">{{ filter.label | escape }}</h4>
+                    {% render 'icon-filter-two' %}
+                  </summary>
+
+                  <fieldset class="facets-wrap parent-wrap category-tree">
+                    <legend class="visually-hidden">{{ filter.label | escape }}</legend>
+
+                    {% if hide_l1_on_base_collection %}
+                      {%- comment -%} ✅ Base collection has only one L1 → show L2 only {%- endcomment -%}
+                      {% assign single_parent = '' %}
+                      {% for parent_value in l1_filter.values %}
+                        {% if parent_value.count > 0 or parent_value.active %}
+                          {% assign single_parent = parent_value.label | strip %}
+                        {% endif %}
+                      {% endfor %}
+
+                      <ul class="facets__list" role="list">
+                        {% for tree_value in tree_filter.values %}
+                          {% assign parts = tree_value.label | split: ',' %}
+                          {% assign tree_parent = parts | first | strip %}
+                          {% assign tree_child = parts | last | strip %}
+
+                          {% if tree_parent == single_parent %}
+                            {% capture option_id %}
+            Filter-{{ id_scope }}-{{ section.id }}-{{ tree_filter.param_name | handle }}-{{ tree_value.value | handle }}-{{ forloop.index0 }}
+          {% endcapture %}
+                            <li class="list-menu__item facets__item">
+                              <label
+                                for="{{ option_id }}"
+                                class="facets-checkbox{% if tree_value.count == 0 and tree_value.active == false %} facets-checkbox--disabled{% endif %}"
+                              >
+                                <input
+                                  type="checkbox"
+                                  class="focus-inset facets-checkbox__hide"
+                                  name="{{ tree_value.param_name }}"
+                                  value="{{ tree_value.value }}"
+                                  id="{{ option_id }}"
+                                  {% if tree_value.active %}
+                                    checked
+                                  {% endif %}
+                                  {% if tree_value.count == 0 and tree_value.active == false %}
+                                    disabled
+                                  {% endif %}
+                                >
+                                <span class="facets-checkbox__marker">
+                                  {%- render 'icon-facets-checkmark' -%}
+                                </span>
+                                <span class="facets-checkbox__label">{{ tree_child }}</span>
+                                <span class="facets-checkbox__count"> ({{ tree_value.count }}) </span>
+                              </label>
+                            </li>
+                          {% endif %}
+                        {% endfor %}
+                      </ul>
+
+                    {% else %}
+                      {%- comment -%}
+                        ✅ Normal / filtered state → show L1 list with nested L2.
+                        CSS :has() + JS fallback will expand L2 under selected L1.
+                      {%- endcomment -%}
+                      <ul class="facets__list category-tree__l1-list" role="list">
+                        {% for parent_value in l1_filter.values %}
+                          {% assign parent_label = parent_value.label | strip %}
+                          {% capture option_id %}
+                            CategoryL1-{{ id_scope }}-{{ section.id }}-{{ parent_value.value | handle }}-{{ forloop.index0 }}
+                          {% endcapture %}
+
+                          <li class="category-tree__l1-item{% if parent_value.active %} is-selected{% endif %}">
+                            <label
+                              for="{{ option_id }}"
+                              class="facets-checkbox category-tree__l1-label{% if parent_value.count == 0 and parent_value.active == false %} facets-checkbox--disabled{% endif %}"
+                            >
+                              <input
+                                type="checkbox"
+                                id="{{ option_id }}"
+                                class="category-tree__l1-input facets-checkbox__hide"
+                                name="{{ parent_value.param_name }}"
+                                value="{{ parent_value.value }}"
+                                data-category-parent-label="{{ parent_label | escape }}"
+                                data-category-parent-key="{{ parent_label | handle }}"
+                                {% if parent_value.active %}
+                                  checked
+                                {% endif %}
+                                {% if parent_value.count == 0 and parent_value.active == false %}
+                                  disabled
+                                {% endif %}
+                              >
+                              <span class="facets-checkbox__marker">
+                                {%- render 'icon-facets-checkmark' -%}
+                              </span>
+                              <span class="facets-checkbox__label">{{ parent_label }}</span>
+                              <span class="facets-checkbox__count"> ({{ parent_value.count }}) </span>
+                            </label>
+
+                            <div class="category-tree__col category-tree__col--l2">
+                              <ul class="facets__list category-tree__l2-list" role="list">
+                                {% for tree_value in tree_filter.values %}
+                                  {% assign parts = tree_value.label | split: ',' %}
+                                  {% assign tree_parent = parts | first | strip %}
+                                  {% assign tree_child = parts | last | strip %}
+
+                                  {% if tree_parent == parent_label %}
+                                    {% capture l2_option_id %}
+                                      Filter-{{ id_scope }}-{{ section.id }}-{{ tree_filter.param_name | handle }}-{{ tree_value.value | handle }}-{{ forloop.index0 }}
+                                    {% endcapture %}
+                                    <li
+                                      class="category-tree__l2-item facets__item"
+                                      data-category-parent-key="{{ tree_parent | handle }}"
+                                    >
+                                      <label
+                                        for="{{ l2_option_id }}"
+                                        class="facets-checkbox{% if tree_value.count == 0 and tree_value.active == false %} facets-checkbox--disabled{% endif %}"
+                                      >
+                                        {% assign is_single_forced_l2 = false %}
+                                        {% if lock_single_l2 and tree_value.value == single_l2_value %}
+                                          {% assign is_single_forced_l2 = true %}
+                                        {% endif %}
+
+                                        <input
+                                          type="checkbox"
+                                          class="focus-inset facets-checkbox__hide"
+                                          name="{{ tree_value.param_name }}"
+                                          value="{{ tree_value.value }}"
+                                          id="{{ l2_option_id }}"
+                                          {% comment %} or {{ l2_option_id }} depending on your variable {% endcomment %}
+                                          {% if is_single_forced_l2 %}
+                                            checked="checked"
+                                            disabled="disabled"
+                                            data-single-l2="true"
+                                          {% else %}
+                                            {% if tree_value.active %}
+                                              checked
+                                            {% endif %}
+                                            {% if tree_value.count == 0 and tree_value.active == false %}
+                                              disabled
+                                            {% endif %}
+                                          {% endif %}
+                                        >
+                                        <span class="facets-checkbox__marker">
+                                          {%- render 'icon-facets-checkmark' -%}
+                                        </span>
+                                        <span class="facets-checkbox__label">{{ tree_child }}</span>
+                                        <span class="facets-checkbox__count"> ({{ tree_value.count }}) </span>
+                                      </label>
+                                    </li>
+                                  {% endif %}
+                                {% endfor %}
+                              </ul>
+                            </div>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </fieldset>
+                </details>
+
+                {% continue %}
+              {% endif %}
+
+              {% if filter.label == 'Category-L2' %}
+                {% continue %}
+              {% endif %}
+
+              <details
+                id="Details-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                class="facets__details js-filter {% if filter.type == 'price_range' %} facets__details-last {% endif %} "
+                {% comment %} {% if filter.param_name == "filter.p.vendor" %} facets__details-first {% endif %}{% endcomment %}
+                data-index="{{ id_scope }}-{{ forloop.index }}"
+              >
+                <summary>
+                  <h4 class="facets__details-title">
+                    {{ filter.label | escape }}
+                  </h4>
+                  {% render 'icon-filter-two' %}
+                </summary>
+                {% case filter.type %}
+                  {% when 'boolean', 'list' %}
+                    {% if filter.label == 'Color' %}
+                      <fieldset class="facets-wrap parent-wrap">
+                        <legend class="visually-hidden">{{ filter.label | escape }}</legend>
+
+                        <ul
+                          class="facets__list"
+                          role="list"
+                          style="--image_filter_columns: {{ image_filter_columns }};"
+                        >
+                          {%- for value in filter.values -%}
+                            {%- assign color_label = value.label | strip -%}
+                            {%- assign color_hex = '' -%}
+
+                            {%- case color_label -%}
+                              {%- when 'Black' -%}
+                                {% assign color_hex = '#000000' %}
+                              {%- when 'White' -%}
+                                {% assign color_hex = '#ffffff' %}
+                              {%- when 'Gray' -%}
+                                {% assign color_hex = '#808080' %}
+                              {%- when 'Grey' -%}
+                                {% assign color_hex = '#808080' %}
+                              {%- when 'Blue' -%}
+                                {% assign color_hex = '#0055ff' %}
+                              {%- when 'Navy' -%}
+                                {% assign color_hex = '#001f3f' %}
+                              {%- when 'Red' -%}
+                                {% assign color_hex = '#ff0000' %}
+                              {%- when 'Khaki' -%}
+                                {% assign color_hex = '#c3b091' %}
+                              {%- when 'Charcoal' -%}
+                                {% assign color_hex = '#333333' %}
+                              {%- when 'Graphite' -%}
+                                {% assign color_hex = '#4a4a4a' %}
+                              {%- when 'Burgundy' -%}
+                                {% assign color_hex = '#800020' %}
+                              {%- when 'Maroon' -%}
+                                {% assign color_hex = '#800000' %}
+                              {%- when 'Green' -%}
+                                {% assign color_hex = '#008000' %}
+                              {%- when 'Camo' -%}
+                                {% assign color_hex = '#6b7b4d' %}
+                              {%- when 'Sand' -%}
+                                {% assign color_hex = '#e7d7a9' %}
+                              {%- when 'Yellow' -%}
+                                {% assign color_hex = '#ffd700' %}
+                              {%- when 'Gold' -%}
+                                {% assign color_hex = '#d4af37' %}
+                              {%- when 'Multi-color' -%}
+                                {% assign color_hex = '#ff69b4' %}
+                              {%- when 'Bone' -%}
+                                {% assign color_hex = '#e8dfd2' %}
+                              {%- when 'Orange' -%}
+                                {% assign color_hex = '#ff8c00' %}
+                              {%- when 'Pink' -%}
+                                {% assign color_hex = '#ffc0cb' %}
+                              {%- when 'Purple' -%}
+                                {% assign color_hex = '#800080' %}
+                              {%- when 'Silver' -%}
+                                {% assign color_hex = '#c0c0c0' %}
+                              {%- when 'Wood' -%}
+                                {% assign color_hex = '#a97458' %}
+                              {%- when 'Brown' -%}
+                                {% assign color_hex = '#5c4033' %}
+                              {%- when 'Bandana-black' -%}
+                                {% assign color_hex = '#000000' %}
+                              {%- when 'Bandana-white' -%}
+                                {% assign color_hex = '#ffffff' %}
+                              {%- when 'Bandana-blue' -%}
+                                {% assign color_hex = '#1e3a8a' %}
+                              {%- when 'Bandana-red' -%}
+                                {% assign color_hex = '#b91c1c' %}
+                              {%- when 'N/A' -%}
+                                {% assign color_hex = '#cccccc' %}
+                            {%- endcase -%}
+
+                            {%- assign is_bandana = false -%}
+                            {% if color_label == 'Bandana-black'
+                              or color_label == 'Bandana-white'
+                              or color_label == 'Bandana-blue'
+                              or color_label == 'Bandana-red'
+                              or color_label == 'Tree-Camo'
+                              or color_label == 'Snow-Tree-Camo'
+                            %}
+                              {% assign is_bandana = true %}
+                            {% endif %}
+
+                            <li class="list-menu__item facets__item">
+                              <label class="facets-checkbox{% if value.count == 0 and value.active == false %} facets-checkbox--disabled{% endif %}">
+                                <input
+                                  type="checkbox"
+                                  name="{{ value.param_name }}"
+                                  value="{{ value.value }}"
+                                  class="facets-checkbox__hide"
+                                  {% if value.active %}
+                                    checked
+                                  {% endif %}
+                                  {% if value.count == 0 and value.active == false %}
+                                    disabled
+                                  {% endif %}
+                                >
+
+                                <span class="facets-checkbox__marker">
+                                  {%- render 'icon-facets-checkmark' -%}
+                                </span>
+
+                                <span class="facets-color-swatch-wrapper">
+                                  {% if is_bandana %}
+                                    {%- assign bandana_key = color_label | handle -%}
+                                    {%- assign bandana_file = bandana_key | append: '.jpg' -%}
+                                    <span class="facets-color-swatch facets-color-swatch--bandana">
+                                      <img
+                                        src="{{ bandana_file | file_url }}"
+                                        alt="{{ color_label }}"
+                                        loading="lazy"
+                                      >
+                                    </span>
+                                  {% else %}
+                                    <span
+                                      class="facets-color-swatch"
+                                      style="background-color: {{ color_hex }};"
+                                    ></span>
+                                  {% endif %}
+
+                                  <span class="facets-checkbox__label">{{ color_label }}</span>
+                                </span>
+
+                                <span class="facets-checkbox__count">({{ value.count }})</span>
+                              </label>
+                            </li>
+                          {%- endfor -%}
+                        </ul>
+                      </fieldset>
+
+                    {% else %}
+                      {% comment %}
+                        {# ---------- DEFAULT LIST / BOOLEAN FILTER ---------- #}
+                      {% endcomment %}
+
+                      <fieldset class="facets-wrap parent-wrap">
+                        <legend class="visually-hidden">
+                          {{ filter.label | escape }}
+                        </legend>
+                        <ul
+                          class="
+                            facets__list
+                            {% comment %} {% if filter.param_name == "filter.p.vendor" %}hide__checkbox{% endif %} {% endcomment %}
+                          "
+                          role="list"
+                          style="--image_filter_columns: {{ image_filter_columns }};"
+                        >
+                          {%- for value in filter.values -%}
+                            <li
+                              class="list-menu__item facets__item"
+                            >
+                              <label class="facets-checkbox{% if value.count == 0 and value.active == false %} facets-checkbox--disabled{% endif %}">
+                                <input
+                                  type="checkbox"
+                                  name="{{ value.param_name }}"
+                                  value="{{ value.value }}"
+                                  class="facets-checkbox__hide"
+                                  {% if value.active %}
+                                    checked
+                                  {% endif %}
+                                  {% if value.count == 0 and value.active == false %}
+                                    disabled
+                                  {% endif %}
+                                >
+                                <span class="facets-checkbox__marker">
+                                  {%- render 'icon-facets-checkmark' -%}
+                                </span>
+                                <span class="facets-checkbox__label">
+                                  {{- value.label | escape -}}
+                                </span>
+                                <span class="facets-checkbox__count">
+                                  (
+                                  {{- value.count -}}
+                                  )
+                                </span>
+                              </label>
+                            </li>
+                          {%- endfor -%}
+                        </ul>
+                      </fieldset>
+                    {% endif %}
+                  {% when 'price_range' %}
+                    {% liquid
+                      assign currencies_using_comma_decimals = 'ANG,ARS,BRL,BYN,BYR,CLF,CLP,COP,CRC,CZK,DKK,EUR,HRK,HUF,IDR,ISK,MZN,NOK,PLN,RON,RUB,SEK,TRY,UYU,VES,VND' | split: ','
+                      assign uses_comma_decimals = false
+                      if currencies_using_comma_decimals contains cart.currency.iso_code
+                        assign uses_comma_decimals = true
+                      endif
+
+                      assign max_price_amount = filter.range_max | money | strip_html | escape
+                    %}
+                    <price-range class="facets__price">
+                      {% liquid
+                        if uses_comma_decimals
+                          assign max_price = filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.'
+                        else
+                          assign max_price = filter.range_max | money_without_currency | replace: ',', ''
+                        endif
+
+                        if uses_comma_decimals
+                          if filter.min_value.value
+                            assign current_price_min = filter.min_value.value | money_without_currency | replace: '.', '' | replace: ',', '.'
+                            assign range_min = current_price_min | divided_by: max_price | times: 100
+                          else
+                            assign range_min = 0
+                            assign current_price_min = 0
+                          endif
+                        else
+                          if filter.min_value.value
+                            assign current_price_min = filter.min_value.value | money_without_currency | replace: ',', ''
+                            assign range_min = current_price_min | divided_by: max_price | times: 100
+                          else
+                            assign range_min = 0
+                            assign current_price_min = 0
+                          endif
+                        endif
+
+                        if uses_comma_decimals
+                          if filter.max_value.value
+                            assign current_price_max = filter.max_value.value | money_without_currency | replace: '.', '' | replace: ',', '.'
+                            assign range_max = current_price_max | divided_by: max_price | times: 100
+                          else
+                            assign current_price_max = max_price
+                            assign range_max = 100
+                          endif
+                        else
+                          if filter.max_value.value
+                            assign current_price_max = filter.max_value.value | money_without_currency | replace: ',', ''
+                            assign range_max = current_price_max | divided_by: max_price | times: 100
+                          else
+                            assign current_price_max = max_price
+                            assign range_max = 100
+                          endif
+                        endif
+                      %}
+                      <div
+                        class="facets__price-ranges"
+                        id="Facet-{{ id_scope }}-{{ forloop.index }}-{{ section.id }}"
+                      >
+                        <div class="facets__price-range facets__price-wrapper field">
+                          <label>
+                            <span>{{- cart.currency.symbol -}}</span>
+                            <input
+                              class="facets__price-range__input field__input"
+                              name="{{ filter.min_value.param_name }}"
+                              id="Filter-{{ id_scope }}-{{ filter.label | escape }}-GTE"
+                              {%- if filter.min_value.value -%}
+                                {%- if uses_comma_decimals -%}
+                                  value="{{ filter.min_value.value | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                {%- else -%}
+                                  value="{{ filter.min_value.value | money_without_currency | replace: ',', '' }}"
+                                {%- endif %}
+                              {%- endif -%}
+                              type="number"
+                              placeholder="{{- 'products.facets.from' | t -}}"
+                              min="0"
+                              {%- if uses_comma_decimals -%}
+                                max="{{ filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                              {%- else -%}
+                                max="{{ filter.range_max | money_without_currency | replace: ',', '' }}"
+                              {% endif %}
+                            >
+                          </label>
+                          <span class="facets__price-range__delimiter"></span>
+                          <label>
+                            <span>{{- cart.currency.symbol -}}</span>
+                            <input
+                              class="facets__price-range__input field__input"
+                              name="{{ filter.max_value.param_name }}"
+                              id="Filter-{{ id_scope }}-{{ filter.label | escape }}-LTE"
+                              {%- if filter.max_value.value -%}
+                                {%- if uses_comma_decimals -%}
+                                  value="{{ filter.max_value.value | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                                {%- else -%}
+                                  value="{{ filter.max_value.value | money_without_currency | replace: ',', '' }}"
+                                {%- endif %}
+                              {%- endif -%}
+                              type="number"
+                              placeholder="{{- 'products.facets.to' | t -}}"
+                              min="0"
+                              {%- if uses_comma_decimals -%}
+                                max="{{ filter.range_max | money_without_currency | replace: '.', '' | replace: ',', '.' }}"
+                              {%- else -%}
+                                max="{{ filter.range_max | money_without_currency | replace: ',', '' }}"
+                              {% endif %}
+                            >
+                          </label>
+                        </div>
+                        <div
+                          class="facets__range no-js-hidden"
+                          style="--range-min: {{ range_min }}%; --range-max: {{ range_max }}%"
+                        >
+                          <input
+                            type="range"
+                            value="{{ current_price_min }}"
+                            min="0"
+                            max="{{ max_price }}"
+                            class="field__range"
+                            aria-label="price range"
+                          >
+                          <input
+                            type="range"
+                            value="{{ current_price_max }}"
+                            min="0"
+                            max="{{ max_price }}"
+                            class="field__range"
+                            aria-label="price range"
+                          >
+                        </div>
+                        <span class="facets__price-label">
+                          {{- 'products.facets.price_range' | t: min_price: 0, max_price: max_price_amount -}}
+                        </span>
+                      </div>
+                    </price-range>
+                {% endcase %}
+              </details>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="facets-menu__buttons active-facets-mobile">
+          <button
+            type="submit"
+            class="button button--primary button--full-width no_submit facets__submit"
+          >
+            {{- 'products.facets.apply' | t -}}
+          </button>
+          <facet-remove>
+            <a
+              href="{{ results_url }}"
+              class="button button--simple {% if total_active_values == 0 %}facets__reset{% endif %} no_submit"
+            >
+              <span class="button-simpl__label">{{ 'products.facets.reset' | t }}</span>
+            </a>
+            {%- for filter in results.filters -%}
+              {{ filter.url_to_remove_all }}
+            {% endfor %}
+          </facet-remove>
+        </div>
+      </div>
+      {% comment %} facets menu end {% endcomment %}
+    </form>
+  </facet-filters-form>
+</div>
+
+<script>
+  (function () {
+    function getSortSelect() {
+      return document.querySelector('select[name="sort_by"]');
+    }
+
+    function getFeaturedCheckboxes(root = document) {
+      return root.querySelectorAll('.filter-featured input[type="checkbox"][data-featured-sort]');
+    }
+
+    function syncFeaturedFromSelect(sortSelect, root = document) {
+      if (!sortSelect) sortSelect = getSortSelect();
+      if (!sortSelect) return;
+
+      const value = sortSelect.value;
+      const featuredCbs = getFeaturedCheckboxes(root);
+
+      featuredCbs.forEach((cb) => {
+        cb.checked = cb.dataset.featuredSort === value;
+      });
+    }
+
+    // 🔑 Main behaviour: Featured checkboxes drive sort_by
+    document.addEventListener('change', function (event) {
+      const target = event.target;
+      const sortSelect = getSortSelect();
+      if (!sortSelect) return;
+
+      // ✅ CLICKED A FEATURED CHECKBOX (desktop or mobile)
+      if (target.matches('.filter-featured input[type="checkbox"][data-featured-sort]')) {
+        const clickedValue = target.dataset.featuredSort;
+        const featuredCbs = getFeaturedCheckboxes();
+        const defaultSort = sortSelect.dataset.defaultSort || '';
+
+        if (target.checked) {
+          // Turn ON this option globally, turn OFF all others
+          featuredCbs.forEach((cb) => {
+            cb.checked = cb.dataset.featuredSort === clickedValue;
+          });
+          sortSelect.value = clickedValue;
+        } else {
+          // Turn OFF Featured completely (both desktop + mobile)
+          featuredCbs.forEach((cb) => {
+            cb.checked = false;
+          });
+
+          // Revert to default sort (removes Featured change from URL)
+          if (defaultSort) {
+            sortSelect.value = defaultSort;
+          } else {
+            sortSelect.selectedIndex = 0;
+          }
+        }
+
+        // Let Shopify handle updating the URL / products
+        sortSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        return; // stop here, we already handled this change
+      }
+
+      // 🔁 If user changes dropdown directly, sync Featured checkboxes
+      if (target.matches('select[name="sort_by"]')) {
+        syncFeaturedFromSelect(target);
+      }
+    });
+
+    // Initial sync on load
+    document.addEventListener('DOMContentLoaded', function () {
+      const sortSelect = getSortSelect();
+      if (sortSelect) syncFeaturedFromSelect(sortSelect);
+    });
+
+    // Re-sync after Shopify redraws facets (AJAX updates / filters)
+    document.addEventListener('facets:updated', function (e) {
+      const sortSelect = getSortSelect();
+      if (sortSelect) syncFeaturedFromSelect(sortSelect, e.target || document);
+    });
+    document.addEventListener('shopify:section:load', function (e) {
+      const sortSelect = getSortSelect();
+      if (sortSelect) syncFeaturedFromSelect(sortSelect, e.target || document);
+    });
+  })();
+</script>
+
+<script>
+  (() => {
+    // Keep in sync with CSS (@media max-width: 768px)
+    const BREAKPOINT = 768;
+    const mq = window.matchMedia(`(max-width: ${BREAKPOINT}px)`);
+
+    // Only undo disables that WE applied for scope; never undo server disables
+    function setScopeEnabled(scope, enabled) {
+      document
+        .querySelectorAll(
+          `[data-facets-scope="${scope}"] input,
+           [data-facets-scope="${scope}"] select,
+           [data-facets-scope="${scope}"] textarea`
+        )
+        .forEach((el) => {
+          if (enabled) {
+            if (el.hasAttribute('data-scope-disabled')) {
+              el.removeAttribute('disabled');
+              el.removeAttribute('data-scope-disabled');
+            }
+          } else {
+            if (!el.disabled) {
+              // don't clobber server disables
+              el.setAttribute('disabled', '');
+              el.setAttribute('data-scope-disabled', '');
+            }
+          }
+        });
+    }
+
+    function toggleOpenFiltersInteractivity(isMobile) {
+      const openLink = document.querySelector('.open_filters');
+      if (!openLink) return;
+      if (isMobile) {
+        if (!openLink.getAttribute('href')) {
+          openLink.setAttribute('href', '#open_filters_menu');
+        }
+        openLink.removeAttribute('aria-disabled');
+        openLink.removeAttribute('tabindex');
+        openLink.style.pointerEvents = '';
+      } else {
+        openLink.removeAttribute('href');
+        openLink.setAttribute('aria-disabled', 'true');
+        openLink.setAttribute('tabindex', '-1');
+        openLink.style.pointerEvents = 'none';
+      }
+    }
+
+    // 🔑 Helper: clear ALL L2 checkboxes in this tree
+    function clearAllL2(tree) {
+      tree.querySelectorAll('.category-tree__l2-item input[type="checkbox"]').forEach((cb) => {
+        cb.checked = false;
+      });
+    }
+
+    // Show/hide AND enable/disable L2 by the selected L1 (original desktop logic)
+    function updateTree(tree) {
+      const checked = tree.querySelector('.category-tree__l1-input:checked');
+      const parentKey = checked ? checked.dataset.categoryParentKey || '' : '';
+
+      tree.querySelectorAll('.category-tree__l2-item').forEach((li) => {
+        const itemKey = li.dataset.categoryParentKey || '';
+        const match = parentKey && itemKey === parentKey;
+
+        // show/hide
+        li.style.display = match ? '' : 'none';
+        li.classList.toggle('category-tree__l2-item--visible', !!match);
+
+        // gate interactivity without touching server disables
+        const cb = li.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+
+        if (match) {
+          if (cb.hasAttribute('data-parent-disabled')) {
+            cb.removeAttribute('disabled');
+            cb.removeAttribute('data-parent-disabled');
+          }
+        } else {
+          if (!cb.disabled) {
+            cb.setAttribute('disabled', '');
+            cb.setAttribute('data-parent-disabled', '');
+          }
+          cb.checked = false; // untick children when L1 no longer matches
+        }
+      });
+    }
+
+    function refreshVisibleScope() {
+      const isMobile = mq.matches;
+      setScopeEnabled('mobile', isMobile);
+      setScopeEnabled('desktop', !isMobile);
+      toggleOpenFiltersInteractivity(isMobile);
+
+      // Normalize all trees after redraw / breakpoint flip
+      document.querySelectorAll('.category-tree').forEach(updateTree);
+    }
+
+    // L1 change: single-choice + clear L2 first + keep details open + update L2
+    document.addEventListener('change', (e) => {
+      const input = e.target;
+      if (!input.matches('.category-tree__l1-input')) return;
+
+      const tree = input.closest('.category-tree');
+      if (!tree) return;
+
+      // 👉 NEW: always clear all L2 when user interacts with L1
+      clearAllL2(tree);
+
+      if (input.checked) {
+        // single-choice within THIS tree (desktop logic preserved)
+        tree.querySelectorAll('.category-tree__l1-input').forEach((o) => {
+          if (o !== input) o.checked = false;
+        });
+        // keep category details open so users see L2 refresh
+        input.closest('.filter__details--category')?.setAttribute('open', '');
+      }
+
+      updateTree(tree);
+    });
+
+    document.addEventListener('DOMContentLoaded', refreshVisibleScope);
+    mq.addEventListener('change', refreshVisibleScope);
+    document.addEventListener('facets:updated', refreshVisibleScope);
+    document.addEventListener('shopify:section:load', () => setTimeout(refreshVisibleScope, 0));
+  })();
+</script>
+
+<script>
+  (function () {
+    // If :has() is supported, CSS handles it—no JS needed.
+    var hasSelectorHas = CSS && CSS.supports && CSS.supports('selector(:has(*))');
+
+    function syncL2Visibility(root) {
+      if (hasSelectorHas) return; // CSS-only path
+      (root || document).querySelectorAll('.category-tree__l1-item').forEach(function (li) {
+        var cb = li.querySelector('.category-tree__l1-input');
+        li.classList.toggle('is-open', !!(cb && cb.checked));
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      syncL2Visibility();
+    });
+    document.addEventListener('facets:updated', function () {
+      syncL2Visibility();
+    });
+    document.addEventListener('shopify:section:load', function (e) {
+      syncL2Visibility(e.target);
+    });
+
+    // When L1 changes (you already force single-select elsewhere), refresh visibility
+    document.addEventListener('change', function (e) {
+      if (e.target && e.target.matches('.category-tree__l1-input')) {
+        syncL2Visibility();
+      }
+    });
+  })();
+</script>
+
+<script>
+  (() => {
+    const mq = window.matchMedia('(max-width: 768px)'); // mobile if matches
+    const FILTER_DETAILS = '.filter-container .filter__details';
+
+    function isDesktop() {
+      return !mq.matches;
+    }
+    function closeAll() {
+      document.querySelectorAll(`${FILTER_DETAILS}[open]`).forEach((d) => (d.open = false));
+    }
+
+    // Close when clicking anywhere that's NOT inside an open filter
+    document.addEventListener('click', (e) => {
+      if (!isDesktop()) return; // desktop only
+      if (e.target.closest(FILTER_DETAILS)) return; // clicks inside keep it open
+      closeAll();
+    });
+
+    // Close on Esc (desktop only)
+    document.addEventListener('keydown', (e) => {
+      if (!isDesktop()) return;
+      if (e.key === 'Escape') closeAll();
+    });
+  })();
+</script>

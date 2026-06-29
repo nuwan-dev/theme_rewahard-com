@@ -1,0 +1,174 @@
+{% comment %} Refactored by Asiri — Hover Border, Theme Font, Box Margins {% endcomment %}
+
+{% schema %}
+{
+  "name": "Product Category",
+  "settings": [
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Category Name Text Color",
+      "default": "#808080"
+    },
+    {
+      "type": "color",
+      "id": "stroke_color",
+      "label": "Hover Border Color",
+      "default": "#000000"
+    },
+    {
+      "type": "number",
+      "id": "margin_top_desktop",
+      "label": "Section Top Margin (Desktop) (px)",
+      "default": 20
+    },
+    {
+      "type": "number",
+      "id": "margin_bottom_desktop",
+      "label": "Section Bottom Margin (Desktop) (px)",
+      "default": 20
+    },
+    {
+      "type": "number",
+      "id": "margin_top_mobile",
+      "label": "Section Top Margin (Mobile) (px)",
+      "default": 10
+    },
+    {
+      "type": "number",
+      "id": "margin_bottom_mobile",
+      "label": "Section Bottom Margin (Mobile) (px)",
+      "default": 10
+    },
+    {
+      "type": "number",
+      "id": "gap",
+      "label": "Item Spacing (px)",
+      "default": 20
+    }
+  ],
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Category Item",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "category_image",
+          "label": "Category Image"
+        },
+        {
+          "type": "text",
+          "id": "category_label",
+          "label": "Category Name"
+        },
+        {
+          "type": "url",
+          "id": "category_link",
+          "label": "Link to Page"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product Category",
+      "category": "General",
+      "blocks": [
+        { "type": "category" },
+        { "type": "category" }
+      ]
+    }
+  ]
+}
+{% endschema %}
+
+<style>
+.product-category {
+  text-align: center;
+  margin-top: {{ section.settings.margin_top_desktop }}px;
+  margin-bottom: {{ section.settings.margin_bottom_desktop }}px;
+  font-family: "koulen";
+
+}
+
+@media (max-width: 768px) {
+  .product-category {
+    margin-top: {{ section.settings.margin_top_mobile }}px;
+    margin-bottom: {{ section.settings.margin_bottom_mobile }}px;
+  }
+
+  .category-item {
+  width: 140px !important;
+  height: 140px !important;
+}
+.category-label {
+  font-size: 18px !important;
+}
+}
+
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: {{ section.settings.gap }}px;
+}
+
+.category-item-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.category-item {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  overflow: hidden;
+  text-align: center;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 0px solid transparent;
+  transition: border 0.3s ease;
+}
+
+.category-item:hover {
+  border: 4px solid {{ section.settings.stroke_color }};
+}
+
+.category-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.category-label {
+  color: {{ section.settings.text_color }};
+  font-weight: bold;
+  text-align: center;
+  margin-top: 12px;
+  font-size: 25px;
+font-style: normal;
+font-weight: 400;
+line-height: 22px; /* 88% */
+letter-spacing: 1px;
+text-transform: uppercase;
+}
+</style>
+
+<div class="product-category">
+  <div class="category-grid">
+    {% for block in section.blocks %}
+      <div class="category-item-wrapper">
+        <a href="{{ block.settings.category_link }}" class="category-item">
+          <img src="{{ block.settings.category_image | image_url }}" alt="{{ block.settings.category_label }}">
+        </a>
+        <span class="category-label">{{ block.settings.category_label }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</div>

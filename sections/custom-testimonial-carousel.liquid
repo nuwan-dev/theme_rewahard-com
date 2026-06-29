@@ -1,0 +1,237 @@
+{% schema %}
+{
+  "name": "Testimonial Carousel",
+  "tag": "section",
+  "class": "testimonial-carousel",
+  "settings": [
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Item Border Color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "text",
+      "id": "padding",
+      "label": "Desktop Padding (e.g. 40px 20px)",
+      "default": "40px 40px"
+    },
+    {
+      "type": "text",
+      "id": "padding_mobile",
+      "label": "Mobile Padding (e.g. 20px 10px)",
+      "default": "20px 20px"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "testimonial",
+      "name": "Testimonial",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Profile Image" },
+        { "type": "text", "id": "name", "label": "Name", "default": "Jane D." },
+        { "type": "range", "id": "stars", "label": "Star Rating", "min": 1, "max": 5, "default": 5 },
+        { "type": "text", "id": "subject", "label": "Quote Subject", "default": "Exceptional Quality" },
+        { "type": "textarea", "id": "quote", "label": "Testimonial Description", "default": "Amazing service and quality. Highly recommend!" }
+      ]
+    }
+  ],
+  "max_blocks": 10,
+  "presets": [
+    {
+      "name": "Testimonial Carousel",
+      "category": "Testimonials",
+      "blocks": [
+        { "type": "testimonial" },
+        { "type": "testimonial" },
+        { "type": "testimonial" },
+        { "type": "testimonial" }
+      ]
+    }
+  ]
+}
+{% endschema %}
+
+{% style %}
+.testimonial-carousel {
+  background-color: {{ section.settings.bg_color }};
+  padding: {{ section.settings.padding }};
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .testimonial-carousel {
+    padding: {{ section.settings.padding_mobile }};
+  }
+}
+
+.testimonial-carousel .carousel-track {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.testimonial-carousel .carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.testimonial-carousel .item {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  width: calc(25% - 20px);
+  background: #fff;
+  border: 1px solid {{ section.settings.border_color }};
+  border-radius: 0px;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.testimonial-carousel .top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.testimonial-carousel .top-row img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.testimonial-carousel .name-stars {
+  display: flex;
+  flex-direction: column;
+}
+
+.testimonial-carousel .name {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.testimonial-carousel .stars {
+  color: gold;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.testimonial-carousel h3 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.testimonial-carousel p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.comma {
+  color: #000;
+  margin: -10px 0px -30px 0px;
+  font-size: 43px !important;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 0px;
+}
+
+@media (max-width: 1024px) {
+  .testimonial-carousel .item {
+    width: calc(50% - 20px);
+  }
+}
+
+@media (max-width: 768px) {
+  .testimonial-carousel .item {
+    width: 100%;
+  }
+
+  .testimonial-carousel .top-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .testimonial-carousel .name-stars {
+    justify-content: center;
+  }
+
+  .testimonial-carousel h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .testimonial-carousel p {
+    font-size: 13px;
+  }
+
+  .comma {
+    margin-bottom: -30px;
+    font-size: 40px !important;
+  }
+}
+{% endstyle %}
+
+{% javascript %}
+document.addEventListener('DOMContentLoaded', () => {
+  const track = document.querySelector('.testimonial-carousel .carousel-track');
+  if (!track) return;
+
+  const items = Array.from(track.children);
+  items.forEach(item => {
+    const clone = item.cloneNode(true);
+    track.appendChild(clone);
+  });
+
+  let scrollAmount = 0;
+  const scrollStep = items[0].offsetWidth + 20;
+
+  setInterval(() => {
+    scrollAmount += scrollStep;
+    if (scrollAmount >= track.scrollWidth / 2) {
+      scrollAmount = 0;
+      track.scrollTo({ left: 0 });
+    } else {
+      track.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+    }
+  }, 4000);
+});
+{% endjavascript %}
+
+<div class="testimonial-carousel">
+  <div class="carousel-track">
+    {% for block in section.blocks %}
+      <div class="item">
+        <div class="top-row">
+          {% if block.settings.image %}
+            <img src="{{ block.settings.image | image_url: width: 100 }}" alt="{{ block.settings.name }}">
+          {% endif %}
+          <div class="name-stars">
+            <div class="name">{{ block.settings.name }}</div>
+            <div class="stars">
+              {% for i in (1..block.settings.stars) %}
+                ★
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <p class="comma">"</p>
+        <h3>{{ block.settings.subject }}</h3>
+        <p>{{ block.settings.quote }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>

@@ -1,0 +1,321 @@
+{{ 'template-collection.css' | asset_url | stylesheet_tag }}
+
+{{ 'section-popular-products.css' | asset_url | stylesheet_tag }}
+{{ 'component-badge.css' | asset_url | stylesheet_tag }}
+{{ 'component-price.css' | asset_url | stylesheet_tag }}
+{{ 'component-card.css' | asset_url | stylesheet_tag }}
+
+{%- style -%}
+  {% render 'spaced-section' %}
+{%- endstyle -%}
+
+<style>
+    @media only screen and (max-width: 768px) {
+    #marsello-area {
+      display: none;
+    }
+  }
+</style>
+
+<div class="container">
+  <div class="popular-products section-{{ section.id }}-padding">
+    {% render 'section-header' %}
+
+    <!-- Desktop Image with Button -->
+    {% if section.settings.desktop_image != blank %}
+      <div class="popular-products__image popular-products__image--desktop">
+        <a href="{{ section.settings.image_link }}">
+          <img
+            src="{{ section.settings.desktop_image | image_url }}"
+            class="banner__image"
+            alt="{{ section.settings.desktop_image.alt }}"
+          >
+        </a>
+      </div>
+    {% endif %}
+
+    <!-- Mobile Image with Button -->
+    {% if section.settings.mobile_image != blank %}
+      <div class="popular-products__image popular-products__image--mobile">
+        <a href="{{ section.settings.image_link }}">
+          <img
+            src="{{ section.settings.mobile_image | image_url }}"
+            class="banner__image"
+            alt="{{ section.settings.mobile_image.alt }}"
+          >
+        </a>
+      </div>
+    {% endif %}
+
+    <div class="sub-collection-container">
+      <button class="scroll-btn left-btn">←</button>
+      <div class="sub-collection-slider">
+        {%- for collection in section.settings.collection_list -%}
+          {% if collection %}
+            <div class="collection-item">
+              <a href="{{ collection.url }}">
+                <div class="collection-item-img-div">
+                  <img
+                    src="{{ collection.featured_image | img_url: 'medium' }}"
+                    class="collection-item-img"
+                    alt="{{ collection.title }}"
+                  >
+                </div>
+                <p>{{ collection.title }}</p>
+              </a>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button class="scroll-btn right-btn">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const sliders = document.querySelectorAll('.sub-collection-slider');
+
+    sliders.forEach((slider) => {
+      const container = slider.closest('.sub-collection-container');
+      const leftBtn = container.querySelector('.left-btn');
+      const rightBtn = container.querySelector('.right-btn');
+
+      function getScrollAmount() {
+        return window.innerWidth <= 768 ? 200 : 400;
+      }
+
+      function updateButtons() {
+        if (slider.scrollLeft > 0) {
+          leftBtn.style.display = 'block';
+        } else {
+          leftBtn.style.display = 'none';
+        }
+
+        if (Math.ceil(slider.scrollLeft + slider.clientWidth) < slider.scrollWidth) {
+          rightBtn.style.display = 'block';
+        } else {
+          rightBtn.style.display = 'none';
+        }
+      }
+
+      updateButtons();
+
+      slider.addEventListener('scroll', updateButtons);
+
+      window.addEventListener('resize', updateButtons);
+
+      leftBtn.addEventListener('click', function () {
+        slider.scrollBy({
+          left: -getScrollAmount(),
+          behavior: 'smooth',
+        });
+      });
+
+      rightBtn.addEventListener('click', function () {
+        slider.scrollBy({
+          left: getScrollAmount(),
+          behavior: 'smooth',
+        });
+      });
+    });
+  });
+</script>
+
+<style>
+    .banner__image {
+    width: 100%;
+  }
+
+  .sub-collection-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden; /* 隐藏溢出内容 */
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .sub-collection-slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth; /* 平滑滚动效果 */
+    scrollbar-width: none; /* 隐藏滚动条 (适用于 Firefox) */
+    -ms-overflow-style: none; /* 隐藏滚动条 (适用于 IE 10+) */
+  }
+
+  .sub-collection-slider::-webkit-scrollbar {
+    display: none; /* 隐藏滚动条 (适用于 Chrome, Safari) */
+  }
+
+  .collection-item {
+    min-width: 200px; /* 设置每个子集合的最小宽度 */
+    max-width: 300px;
+    margin-right: 15px;
+    flex-shrink: 0; /* 防止子元素收缩 */
+    text-align:center;
+  }
+    .collection-item-img-div {
+      padding: 1px;
+  	background: #000;
+    }
+
+    .collection-item-img {
+
+      object-fit: cover; /* 保持图片不变形，剪裁内容 */
+
+      overflow: hidden; /* 确保内容不溢出 */
+      display: block; /* 确保图片为块级元素 */
+      border: 6px solid #fff;
+
+    }
+
+
+  .scroll-btn {
+    position: absolute;
+    top: 40%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.65);
+    color: white;
+    border: none;
+    padding: 20px;
+    cursor: pointer;
+    z-index: 100;
+    display: none; /* 初始状态下隐藏 */
+  }
+
+  .left-btn {
+    left: 5px; /* 避免按钮紧贴边缘，可以根据需要调整 */
+  }
+
+  .right-btn {
+    right: 5px; /* 避免按钮紧贴边缘，可以根据需要调整 */
+  }
+
+  @media screen and (min-width: 768px) {
+    .popular-products__image--desktop {
+      display: block;
+    }
+
+    .popular-products__image--mobile {
+      display: none;
+    }
+  }
+
+  @media screen and (max-width: 767px) {
+    .popular-products__image--mobile {
+      display: block;
+    }
+
+    .popular-products__image--desktop {
+      display: none;
+    }
+
+    .scroll-btn {
+    position: absolute;
+    top: 40%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.65);
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 100;
+    display: none; /* 初始状态下隐藏 */
+  }
+
+  }
+
+
+    @media only screen and (max-width: 768px) {
+      .collection-item-img-div{
+        padding: 3px;
+      }
+
+      .collection-item-img {
+        width: 84px;
+        height: 84px;
+        border: 3px solid #fff;
+      }
+      .collection-item {
+        min-width: 80px;
+        max-width: 90px;
+        margin-right:10px;
+        font-size: 12px;
+        text-align:center;
+      }
+
+      .collection-item p {
+        width:85px;
+        line-height:20px;
+        font-size:11px;
+      }
+      .scroll-btn {
+        top: 30%;
+      }
+    }
+
+
+    .popular-products__image {
+      position: relative;
+    }
+
+    .banner__button {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background-color: #000;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+
+    .banner__button:hover {
+      background-color: #333;
+    }
+
+    @media screen and (max-width: 767px) {
+      .banner__button--mobile {
+        font-size: 14px;
+        padding: 8px 16px;
+      }
+    }
+</style>
+
+{% schema %}
+{
+  "name": "New Collections",
+  "tag": "section",
+  "presets": [
+    {
+      "name": "New Collections"
+    }
+  ],
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "desktop_image",
+      "label": "Desktop Image"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image",
+      "label": "Mobile Image"
+    },
+    {
+      "type": "url",
+      "id": "image_link",
+      "label": "Image Link"
+    },
+    {
+      "type": "collection_list",
+      "id": "collection_list",
+      "label": "Collection List",
+      "limit": 10
+    }
+  ]
+}
+{% endschema %}

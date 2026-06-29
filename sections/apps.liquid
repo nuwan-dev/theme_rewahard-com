@@ -1,0 +1,47 @@
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+      const section = document.getElementById("video-container");
+      if (section) {
+        section.style.display = "block";
+      }
+    }, 5000); // 5000ms = 5 seconds
+  });
+</script>
+<div class="{% if section.settings.include_margins %}container{% endif %}" id="video-container" style="{% if section.settings.delay_video_loading %}display:none;{% endif %}">
+  {%- for block in section.blocks -%}
+    {% render block %}
+  {%- endfor -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:sections.apps.name",
+  "tag": "section",
+  "class": "spaced-section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "include_margins",
+      "default": true,
+      "label": "t:sections.apps.settings.include_margins.label"
+    },
+    {
+      "type": "checkbox",
+      "id": "delay_video_loading",
+      "default": false,
+      "label": "video loading delay"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "@app"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:sections.apps.presets.name"
+    }
+  ]
+}
+{% endschema %}

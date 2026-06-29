@@ -1,0 +1,392 @@
+{%- style -%}
+  .section-{{ section.id }}-padding {
+    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
+    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .section-{{ section.id }}-padding {
+      padding-top: {{ section.settings.padding_top }}px;
+      padding-bottom: {{ section.settings.padding_bottom }}px;
+    }
+  }
+
+  /* --- VARIABLES --- */
+  #shopify-section-{{ section.id }} {
+    --bg-color: {{ section.settings.bg_color }};
+    --text-color: {{ section.settings.text_color }};
+    --border-color: {{ section.settings.border_color }};
+    
+    /* Typography Variables */
+    --heading-size: {{ section.settings.heading_size }}px;
+    --heading-weight: {{ section.settings.heading_weight }};
+    --heading-transform: {{ section.settings.heading_transform }};
+    
+    --text-size: {{ section.settings.text_size }}px;
+    --text-line-height: {{ section.settings.text_line_height }};
+    
+    --inner-padding: {{ section.settings.inner_padding }}px;
+  }
+
+  /* --- CONTAINER --- */
+  #shopify-section-{{ section.id }} .faq-container {
+    max-width: {{ section.settings.max_width }}px;
+    margin: 0 auto;
+    background-color: var(--bg-color);
+  }
+
+  /* --- ACCORDION ITEM --- */
+  #shopify-section-{{ section.id }} .faq-item {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  #shopify-section-{{ section.id }} .faq-item:first-child {
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* --- HEADER (BUTTON) --- */
+  #shopify-section-{{ section.id }} .faq-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text-color);
+    transition: color 0.3s ease;
+  }
+
+  #shopify-section-{{ section.id }} .faq-header:hover {
+    opacity: 0.8;
+  }
+
+  /* --- TITLE --- */
+  #shopify-section-{{ section.id }} .faq-title {
+    /* Font Stack Logic */
+    font-family: {% if section.settings.heading_font_stack == 'heading' %}var(--font-heading-family){% else %}var(--font-body-family){% endif %};
+    font-size: var(--heading-size);
+    font-weight: var(--heading-weight);
+    text-transform: var(--heading-transform);
+    letter-spacing: 0.5px;
+    margin: 0;
+    padding-right: 20px;
+    line-height: 1.3;
+  }
+
+  /* --- ICON --- */
+  #shopify-section-{{ section.id }} .faq-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    transition: transform 0.4s ease;
+  }
+  
+  #shopify-section-{{ section.id }} .faq-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  #shopify-section-{{ section.id }} .faq-item.active .faq-icon {
+    transform: rotate(90deg);
+  }
+
+  /* --- CONTENT --- */
+  #shopify-section-{{ section.id }} .faq-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+  }
+
+  #shopify-section-{{ section.id }} .faq-item.active .faq-content {
+    max-height: 1000px;
+    opacity: 1;
+  }
+
+  /* --- INNER ANSWER BOX --- */
+  #shopify-section-{{ section.id }} .faq-content-inner {
+    border: 1px solid var(--border-color);
+    padding: var(--inner-padding);
+    margin-bottom: 30px;
+    
+    font-size: var(--text-size);
+    line-height: var(--text-line-height);
+    color: var(--text-color);
+    font-family: var(--font-body-family); /* Answers always use body font for readability */
+  }
+  
+  #shopify-section-{{ section.id }} .faq-content-inner p:last-child {
+    margin-bottom: 0;
+  }
+{%- endstyle -%}
+
+<div class="section-{{ section.id }}-padding" style="background-color: {{ section.settings.bg_color }};">
+  <div class="page-width container">
+    <div class="faq-container">
+      {%- for block in section.blocks -%}
+        <div class="faq-item" {{ block.shopify_attributes }}>
+          
+          <button class="faq-header" aria-expanded="false">
+            <h3 class="faq-title">{{ block.settings.heading | escape }}</h3>
+            <span class="faq-icon">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 17L17 7M17 7H7M17 7V17" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </button>
+
+          <div class="faq-content">
+            <div class="faq-content-inner">
+              {{ block.settings.content }}
+            </div>
+          </div>
+
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Only select headers within this specific section instance to avoid conflicts
+    const sectionContainer = document.getElementById('shopify-section-{{ section.id }}');
+    const headers = sectionContainer.querySelectorAll('.faq-header');
+
+    headers.forEach(header => {
+      header.addEventListener('click', function() {
+        const item = this.parentElement;
+        const isActive = item.classList.contains('active');
+
+        {% if section.settings.auto_close %}
+          sectionContainer.querySelectorAll('.faq-item').forEach(otherItem => {
+             if (otherItem !== item) {
+               otherItem.classList.remove('active');
+               otherItem.querySelector('.faq-header').setAttribute('aria-expanded', 'false');
+             }
+          });
+        {% endif %}
+
+        if (isActive) {
+          item.classList.remove('active');
+          this.setAttribute('aria-expanded', 'false');
+        } else {
+          item.classList.add('active');
+          this.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "FAQ Accordion (Rewahard)",
+  "tag": "section",
+  "class": "section",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "default": 1200,
+      "unit": "px",
+      "label": "Content Max Width"
+    },
+    {
+      "type": "checkbox",
+      "id": "auto_close",
+      "default": true,
+      "label": "Auto-close other items"
+    },
+    {
+      "type": "header",
+      "content": "Heading Typography"
+    },
+    {
+      "type": "select",
+      "id": "heading_font_stack",
+      "label": "Font Family",
+      "options": [
+        { "value": "heading", "label": "Use Theme Heading Font" },
+        { "value": "body", "label": "Use Theme Body Font" }
+      ],
+      "default": "heading"
+    },
+    {
+      "type": "range",
+      "id": "heading_size",
+      "min": 14,
+      "max": 40,
+      "step": 1,
+      "default": 20,
+      "unit": "px",
+      "label": "Font Size"
+    },
+    {
+      "type": "select",
+      "id": "heading_weight",
+      "label": "Font Weight",
+      "options": [
+        { "value": "400", "label": "Normal" },
+        { "value": "500", "label": "Medium" },
+        { "value": "600", "label": "Semi-Bold" },
+        { "value": "700", "label": "Bold" }
+      ],
+      "default": "700"
+    },
+    {
+      "type": "select",
+      "id": "heading_transform",
+      "label": "Text Transform",
+      "options": [
+        { "value": "uppercase", "label": "Uppercase" },
+        { "value": "capitalize", "label": "Capitalize" },
+        { "value": "none", "label": "None" }
+      ],
+      "default": "uppercase"
+    },
+    {
+      "type": "header",
+      "content": "Answer Typography"
+    },
+    {
+      "type": "range",
+      "id": "text_size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "default": 16,
+      "unit": "px",
+      "label": "Font Size"
+    },
+    {
+      "type": "range",
+      "id": "text_line_height",
+      "min": 1.0,
+      "max": 2.0,
+      "step": 0.1,
+      "default": 1.6,
+      "label": "Line Height"
+    },
+    {
+      "type": "header",
+      "content": "Colors & Borders"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Color",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "range",
+      "id": "inner_padding",
+      "min": 10,
+      "max": 60,
+      "step": 5,
+      "default": 30,
+      "unit": "px",
+      "label": "Answer Box Padding"
+    },
+    {
+      "type": "header",
+      "content": "Section Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 36,
+      "unit": "px",
+      "label": "Top Padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 36,
+      "unit": "px",
+      "label": "Bottom Padding"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "question",
+      "name": "Question",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "default": "1. QUESTION TEXT HERE",
+          "label": "Question Text"
+        },
+        {
+          "type": "richtext",
+          "id": "content",
+          "default": "<p>Answer text goes here.</p>",
+          "label": "Answer Text"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "FAQ Accordion (Rewahard)",
+      "blocks": [
+        {
+          "type": "question",
+          "settings": {
+            "heading": "1. WHAT DOES STREETWEAR MEAN?",
+            "content": "<p>Streetwear is a casual fashion trend that started as inspiration by people who are into skateboarding and hip-hop while there was a movement to create a new urban culture. It originated in the 1980s and 1990s and is known for its casual fit, bold graphics, and a blend of high and street fashion.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "heading": "2. WHAT ARE SOME POPULAR STREETWEAR BRANDS?"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "heading": "3. WHERE CAN I BUY THE BEST STREETWEAR IN NZ?"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

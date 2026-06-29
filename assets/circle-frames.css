@@ -1,0 +1,180 @@
+.sub-collection-container {
+  padding-top: 50px;
+  padding-left: 20rem;
+  padding-right: 20rem;
+  width: fit-content;
+  justify-self: center;
+}
+
+.sub-collection-slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth; /* 平滑滚动效果 */
+  scrollbar-width: none; /* 隐藏滚动条 (适用于 Firefox) */
+  -ms-overflow-style: none; /* 隐藏滚动条 (适用于 IE 10+) */
+}
+
+.sub-collection-slider::-webkit-scrollbar {
+  display: none; /* 隐藏滚动条 (适用于 Chrome, Safari) */
+}
+
+.collection-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  height: auto;
+  margin-right: 50px;
+  flex-shrink: 0; /* 防止子元素收缩 */
+  text-align: center;
+  text-align: center;
+}
+
+.collection-item:last-child{
+  margin-right:0;
+}
+
+.collection-item-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.collection-item:hover .circle-path-pulse {
+  animation: dash-pulse 5s ease-in-out infinite;
+}
+
+.collection-item-img-div {
+  position: absolute;
+  top:10px;
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.story-list__circle {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  z-index: 1;
+}
+
+.circle-path-pulse {
+  stroke-dasharray: 0;
+  stroke-dashoffset: 0;
+}
+
+@keyframes dash-pulse {
+  0% {
+    stroke-dasharray: 0;
+  }
+  60% {
+    stroke-dasharray: 90;
+  }
+  100% {
+    stroke-dasharray: 0;
+  }
+}
+
+.collection-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 保持图片不变形，剪裁内容 */
+  border-radius: 50%; /* 将图片变成圆形 */
+  overflow: hidden; /* 确保内容不溢出 */
+  display: block; /* 确保图片为块级元素 */
+  border: 2px solid #fff;
+}
+.collection-item-img:hover {
+  border: none;
+}
+
+.collection-item p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.scroll-btn {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  cursor: pointer;
+  z-index: 20;
+  display: none; /* 初始状态下隐藏 */
+}
+
+.scroll-btn span {
+  display: none;
+}
+
+.left-btn {
+  left: 0; /* 避免按钮紧贴边缘，可以根据需要调整 */
+}
+
+.right-btn {
+  right: 0; /* 避免按钮紧贴边缘，可以根据需要调整 */
+}
+
+@media only screen and (max-width: 768px) {
+  .sub-collection-container {
+    padding-top: 0px;
+    margin-top: 24px;
+    padding-left: 20px;
+    padding-right: 20px;
+
+    position: relative;
+    width: 100%;
+    overflow: hidden; /* 隐藏溢出内容 */
+    display: flex;
+    align-items: center;
+  }
+
+  .collection-item-img-div {
+    top: 6px;
+    width: 92px;
+    height: 92px;
+  }
+
+  .story-list__circle {
+    width: 104px;
+    height: 104px;
+  }
+
+  .collection-item-img {
+    border: 2px solid #fff;
+  }
+  .collection-item {
+    margin-right: 30px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .collection-item p {
+    width: 90px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  .scroll-btn {
+    top: 30%;
+  }
+
+  .scroll-btn svg {
+    display: none !important;
+  }
+
+  .scroll-btn {
+    padding: 10px;
+  }
+
+  .scroll-btn span {
+    display: block;
+  }
+}

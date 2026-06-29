@@ -1,0 +1,58 @@
+{{ 'section-collection-grid.css' | asset_url | stylesheet_tag }}
+
+{{ 'horizontal-scroll-collections.css' | asset_url | stylesheet_tag }}
+
+{% style %}
+	{% render 'spaced-section' %}
+	{% render 'spaced-section-inner' %}
+	#shopify-section-{{ section.id }} {
+		--per-row : {{ section.settings.per_row }}
+	}
+{% endstyle %}
+
+
+{% liquid
+	if section.settings.per_row == 1
+		assign collection_class = 'collection-grid-one'
+	else
+		assign collection_class = ''
+	endif
+%}
+
+
+<div class="pk-collections collection-grid {{ collection_class }} section-{{ section.id }}-padding">
+	<div class="section-header__line">
+		<div class="container">
+			<div class="section-header__item">
+				<div class="section-header__title__block level is-mobile">
+                    <div class="level-item"><hr /></div>
+					{%- if section.settings.heading != blank -%}
+						<h2 class="section-header__title title--section h2">
+							{{ section.settings.heading }}
+						</h2>
+					{% endif %}
+                    <div class="level-item"><hr style="color:#000;"/></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% schema %}
+{
+	"name": "t:sections.pk-divider.name",
+	"class": "spaced-section collection-grid-section",
+	"tag": "section",
+	"enabled_on": {
+		"templates": ["*"]
+	},
+	"settings": [
+		{
+			"type": "inline_richtext",
+			"id": "heading",
+			"default": "Heading",
+			"label": "t:sections.all.heading.label"
+		},
+	],
+}
+{% endschema %}

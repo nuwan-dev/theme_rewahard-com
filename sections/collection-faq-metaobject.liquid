@@ -1,0 +1,148 @@
+{%- comment -%}
+This file has been modified by the Yoast SEO for Shopify app.
+You can learn more about this (and learn how to cleanly revert these changes) at https://yoa.st/removing-theme-changes.
+{%- endcomment -%}
+{{ 'section-faq.css' | asset_url | stylesheet_tag }}
+
+{%- style -%}
+  {% render 'spaced-section' %}
+  {% render 'spaced-section-inner' %}
+
+  .faq-block__description { padding-bottom: 1.5rem; }
+{%- endstyle -%}
+
+<link rel="stylesheet" href="{{ 'component-accordion.css' | asset_url }}" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="{{ 'component-list-menu.css' | asset_url }}" media="print" onload="this.media='all'">
+
+{%- liquid
+  assign items = blank
+
+  if collection and collection.metafields.custom.faq_group
+    assign group = collection.metafields.custom.faq_group.value | default: collection.metafields.custom.faq_group
+    if group and group.items != blank
+      assign items = group.items.value | default: group.items
+    endif
+  endif
+
+  # Sort by 'order' if every item has it
+  if items and items != blank and items.size > 1
+    assign can_sort = true
+    for it in items
+      if it.order == blank
+        assign can_sort = false
+        break
+      endif
+    endfor
+    if can_sort
+      assign items = items | sort: 'order'
+    endif
+  endif
+
+  # ALWAYS allow reversing (even if we didn't sort)
+  if section.settings.reverse_order and items and items != blank
+    assign items = items | reverse
+  endif
+-%}
+
+{%- if items != blank -%}
+<div class="faq color-{{ section.settings.color_scheme }} section-{{ section.id }}-padding">
+  <div class="faq-header center">
+    <div class="container">
+      {%- if section.settings.subheading != blank -%}
+        <div class="faq__subtitle subtitle">{{ section.settings.subheading }}</div>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h2 class="faq__title">{{ section.settings.heading | escape }}</h2>
+      {%- endif -%}
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="faq-box">
+      {%- for faq in items -%}
+        <div class="faq-block">
+          <div class="accordion faq-item">
+            <details {% if section.settings.open_first and forloop.first %}open{% endif %}>
+              <summary>
+                <h3 class="faq-block__heading">{{ faq.question }}</h3>
+                {% render 'icon-filter-two' %}
+              </summary>
+              <div class="faq-block__description">
+                {%- if faq.answer_rich -%}
+                  {{ faq.answer_rich | metafield_tag }}
+                {%- elsif faq.answer -%}
+                  {{ faq.answer }}
+                {%- endif -%}
+              </div>
+            </details>
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+{%- comment -%}Yoast SEO schema control block: start.{%- endcomment -%}
+{%- assign yoast_seo_settings = shop.metafields.yoast_seo.settings.value | default: shop.metafields.yoast_seo.settings -%}
+{%- if disabled_by_yoast_seo or yoast_seo_settings.schema.useTheme.schema or yoast_seo_settings.schema.useTheme.webpage -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {%- for faq in items -%}
+      {%- assign q = faq.question | strip_html | strip -%}
+      {%- if faq.answer_rich -%}
+        {%- assign a = faq.answer_rich | metafield_tag | strip_html -%}
+      {%- elsif faq.answer -%}
+        {%- assign a = faq.answer | strip_html -%}
+      {%- else -%}
+        {%- assign a = '' -%}
+      {%- endif -%}
+      {%- if q != blank and a != blank -%}
+      {
+        "@type": "Question",
+        "name": {{ q | json }},
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": {{ a | json }}
+        }
+      }{%- if forloop.last == false -%},{%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+  ]
+}
+{%- comment -%}Yoast SEO schema control block: end.{%- endcomment -%}
+</script>
+{%- endif -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Collection FAQ",
+  "tag": "section",
+  "class": "spaced-section blockqoute-section",
+  "templates": ["collection"],
+  "settings": [
+    {
+      "type": "select",
+      "id": "color_scheme",
+      "label": "t:sections.all.color_scheme.label",
+      "default": "background-1",
+      "options": [
+        { "value": "background-1", "label": "t:sections.all.color_scheme.options__1.label" },
+        { "value": "background-2", "label": "t:sections.all.color_scheme.options__2.label" },
+        { "value": "background-3", "label": "t:sections.all.color_scheme.options__3.label" },
+        { "value": "background-4", "label": "t:sections.all.color_scheme.options__4.label" },
+        { "value": "background-5", "label": "t:sections.all.color_scheme.options__5.label" },
+        { "value": "inverse", "label": "t:sections.all.color_scheme.options__6.label" }
+      ]
+    },
+    { "type": "text", "id": "subheading", "default": "Questions & Answers", "label": "Subheading" },
+    { "type": "inline_richtext", "id": "heading", "default": "FAQ", "label": "Heading" },
+    { "type": "checkbox", "id": "open_first", "default": false, "label": "Open first item by default" },
+    { "type": "checkbox", "id": "reverse_order", "default": false, "label": "Reverse order" }
+  ],
+  "presets": [{ "name": "Collection FAQ" }]
+}
+{% endschema %}

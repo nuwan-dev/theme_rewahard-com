@@ -1,0 +1,286 @@
+<style>
+  .sub-collection-container {
+    //display:none;
+    padding-top:10px;
+  }
+
+  .sub-collection-slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth; /* 平滑滚动效果 */
+    scrollbar-width: none; /* 隐藏滚动条 (适用于 Firefox) */
+    -ms-overflow-style: none; /* 隐藏滚动条 (适用于 IE 10+) */
+  }
+
+  .sub-collection-slider::-webkit-scrollbar {
+    display: none; /* 隐藏滚动条 (适用于 Chrome, Safari) */
+  }
+
+  .collection-item {
+    min-width: 80px; /* 设置每个子集合的最小宽度 */
+    //max-width: 90px;
+    margin-right: 15px;
+    flex-shrink: 0; /* 防止子元素收缩 */
+    text-align: center;
+  }
+   /* .collection-item p {
+     font-display: swap;
+      width: 200px;
+      height: 24px;
+      font-size: 15px;
+      font-weight: 400;
+      font-family: "Koulen", var(--font-body-family);
+
+    } */
+
+  .collection-item-img-div {
+    border-radius: 50%; /* 将图片变成圆形 */
+    padding: 5px;
+    background: linear-gradient(45deg, #d91568,rgb(253, 189, 14));
+  }
+
+  .collection-item-img {
+    width: 195px; /* 圆形的直径 */
+    height: 195px; /* 圆形的直径 */
+    object-fit: cover; /* 保持图片不变形，剪裁内容 */
+    border-radius: 50%; /* 将图片变成圆形 */
+    overflow: hidden; /* 确保内容不溢出 */
+    display: block; /* 确保图片为块级元素 */
+    border: 6px solid #fff;
+  }
+  .collection-item-img:hover {
+    border: 4px solid #fff;
+  }
+
+  .scroll-btn {
+    position: absolute;
+    top: 40%;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    cursor: pointer;
+    z-index: 20;
+    display: none; /* 初始状态下隐藏 */
+  }
+
+  .scroll-btn span {
+    display: none;
+  }
+
+  .left-btn {
+    left: 0; /* 避免按钮紧贴边缘，可以根据需要调整 */
+  }
+
+  .right-btn {
+    right: 0; /* 避免按钮紧贴边缘，可以根据需要调整 */
+  }
+
+  @media only screen and (max-width: 768px) {
+    .sub-collection-container {
+      margin-top: 10px;
+
+      position: relative;
+      width: 100%;
+      overflow: hidden; /* 隐藏溢出内容 */
+      display: flex;
+      align-items: center;
+    }
+
+    .collection-item-img-div{
+      padding: 3px;
+    }
+
+    .collection-item-img {
+      width: 86px;
+      height: 86px;
+      border: 3px solid #fff;
+    }
+    .collection-item {
+      margin-right: 10px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .collection-item p {
+      width: 90px;
+      line-height: 20px;
+      font-size: 11px;
+    }
+    .scroll-btn {
+      top: 30%;
+    }
+
+    .scroll-btn svg {
+      display: none !important;
+    }
+
+    .scroll-btn {
+      padding: 10px;
+    }
+
+    .scroll-btn span {
+      display: block;
+    }
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const slider = document.querySelector(".sub-collection-slider");
+    const leftBtn = document.querySelector(".left-btn");
+    const rightBtn = document.querySelector(".right-btn");
+
+    // 根据窗口宽度确定滚动距离
+    function getScrollAmount() {
+      // 如果屏幕宽度小于或等于768px，认为是手机端
+      return window.innerWidth <= 768 ? 200 : 400;
+    }
+
+    function updateButtons() {
+      if (slider.scrollLeft > 0) {
+        leftBtn.style.display = "block";
+      } else {
+        leftBtn.style.display = "none";
+      }
+
+      if (
+        Math.ceil(slider.scrollLeft + slider.clientWidth) < slider.scrollWidth
+      ) {
+        rightBtn.style.display = "block";
+      } else {
+        rightBtn.style.display = "none";
+      }
+    }
+
+    updateButtons();
+
+    slider.addEventListener("scroll", updateButtons);
+
+    window.addEventListener("resize", updateButtons);
+
+    leftBtn.addEventListener("click", function () {
+      slider.scrollBy({
+        left: -getScrollAmount(), // 根据设备类型获取滚动距离
+        behavior: "smooth",
+      });
+    });
+
+    rightBtn.addEventListener("click", function () {
+      slider.scrollBy({
+        left: getScrollAmount(), // 根据设备类型获取滚动距离
+        behavior: "smooth",
+      });
+    });
+  });
+</script>
+
+{% assign collection_handles = 'new-arrivals,buy-2-get-1-free,design-your-own,og-graphics,pro-club-tees,best-sellers,pro-club-hoodies,pro-club-shorts,pro-club-pants,pro-club-tracksuits,locs-sunglasses,dickies-pants,dickies-shorts,gift-card'
+  | split: ','
+%}
+
+<div
+  class="container-fluid"
+  style="padding-left: 2em !important; padding-right: 2em !important"
+>
+  <div class="sub-collection-container">
+    <button class="scroll-btn left-btn">
+      <span>←</span>
+
+      <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+      <svg
+        width="40px"
+        height="80px"
+        viewBox="-19.04 0 75.803 75.803"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g
+          id="Group_64"
+          data-name="Group 64"
+          transform="translate(-624.082 -383.588)"
+        >
+          <path
+            id="Path_56"
+            data-name="Path 56"
+            d="M660.313,383.588a1.5,1.5,0,0,1,1.06,2.561l-33.556,33.56a2.528,2.528,0,0,0,0,3.564l33.556,33.558a1.5,1.5,0,0,1-2.121,2.121L625.7,425.394a5.527,5.527,0,0,1,0-7.807l33.556-33.559A1.5,1.5,0,0,1,660.313,383.588Z"
+            fill="#ffffff"
+          />
+        </g>
+      </svg>
+    </button>
+    <div class="sub-collection-slider">
+      {%- for block in section.blocks -%}
+        {% assign sub_collection = block.settings.collection %}
+        {% if sub_collection %}
+          <div class="collection-item">
+            <a href="{{ sub_collection.url }}">
+              <div class="collection-item-img-div">
+                <img
+                  src="{{ sub_collection.featured_image | img_url: 'medium' }}"
+                  class="collection-item-img"
+                  alt="{{ sub_collection.title }}"
+                >
+              </div>
+              <p>{{ sub_collection.title }}</p>
+            </a>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <button class="scroll-btn right-btn desk-btn">
+      <span>→</span>
+
+      <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+      <svg
+        width="40px"
+        height="80px"
+        viewBox="-19.04 0 75.804 75.804"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g
+          id="Group_65"
+          data-name="Group 65"
+          transform="translate(-831.568 -384.448)"
+        >
+          <path
+            id="Path_57"
+            data-name="Path 57"
+            d="M833.068,460.252a1.5,1.5,0,0,1-1.061-2.561l33.557-33.56a2.53,2.53,0,0,0,0-3.564l-33.557-33.558a1.5,1.5,0,0,1,2.122-2.121l33.556,33.558a5.53,5.53,0,0,1,0,7.807l-33.557,33.56A1.5,1.5,0,0,1,833.068,460.252Z"
+            fill="#ffffff"
+          />
+        </g>
+      </svg>
+    </button>
+  </div>
+</div>
+{% schema %}
+{
+  "name": "t:sections.custom-liquid.name",
+  "tag": "section",
+  "class": "spaced-section",
+  "max_blocks": 50,
+  "settings": [],
+  "blocks": [
+      {
+			"type": "collection_item",
+			"name": "t:sections.header.blocks.mega-menu-collection.name",
+			"settings" : [
+        {
+					"type": "url",
+					"id": "external_link",
+					"label": "external_link"
+				},
+				{
+					"type": "collection",
+					"id": "collection",
+					"label": "t:sections.all.collection.label"
+				},
+			]
+		},
+  ],
+  "presets": [
+    {
+      "name": "t:sections.custom-liquid.presets.name"
+    }
+  ]
+}
+{% endschema %}
